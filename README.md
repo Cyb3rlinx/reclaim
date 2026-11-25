@@ -30,6 +30,8 @@ tourist gets 80% now ◄── ReclaimVault (ERC-4626 pool) ◄─────�
 - Per-claim cap and configurable advance/fee terms (`advance + fee ≤ 100%`).
 - **On-chain price check:** every advance is re-priced with the Atlas Oracle THB/USD feed. The agent states the refund in THB and in USD; the vault rejects it if they differ by more than 1% (`PriceMismatch`), if the feed is older than 7 days (`StalePrice`) or if the price is invalid. A compromised agent server cannot over-advance.
 
+**Demo video (1:37, real AI read + live BSC testnet transactions):** [launch/reclaim-demo.mp4](launch/reclaim-demo.mp4)
+
 **Sponsor integration:** every advance is priced with the Atlas Oracle THB/USD feed on BSC — see [ATLAS-INTEGRATION.md](ATLAS-INTEGRATION.md).
 
 ## Live on BNB Smart Chain testnet (chainId 97)
