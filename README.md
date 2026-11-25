@@ -29,6 +29,17 @@ tourist gets 80% now ◄── ReclaimVault (ERC-4626 pool) ◄─────�
 - Lenders can only withdraw idle cash, never money that is currently lent out.
 - Per-claim cap and configurable advance/fee terms (`advance + fee ≤ 100%`).
 
+## Live on BNB Smart Chain testnet (chainId 97)
+
+| Contract | Address |
+|---|---|
+| ReclaimVault (ERC-4626 pool) | [`0x3AA2275CFDdED1e638C77edC3B480926f1b569f3`](https://testnet.bscscan.com/address/0x3AA2275CFDdED1e638C77edC3B480926f1b569f3) |
+| ReclaimReceipt (ERC-721) | [`0xD8D94e08319ECE8D4d17d539A5F0e0A907028438`](https://testnet.bscscan.com/address/0xD8D94e08319ECE8D4d17d539A5F0e0A907028438) |
+| MockUSD (test stablecoin) | [`0xaB05ce197D2A6c006d2ec17F4084876Fc2160CC0`](https://testnet.bscscan.com/address/0xaB05ce197D2A6c006d2ec17F4084876Fc2160CC0) |
+| Atlas Oracle THB/USD feed | [`0x9f9cb4f972edd5bd59ca045f10821d8a2588bf4e`](https://testnet.bscscan.com/address/0x9f9cb4f972edd5bd59ca045f10821d8a2588bf4e) |
+
+First full cycle on testnet (claim #1): [advance](https://testnet.bscscan.com/tx/0x9943b5550a7494f9a71ad7fe51b440f3af63a7528a4949eea586c87a8ab70730) → [refund attested](https://testnet.bscscan.com/tx/0x9f66b923724e714eed172f45ed2d039ec249c01c7b88dff6632e2d5d5b160ec9) → [repaid](https://testnet.bscscan.com/tx/0xe04e3099af256da714c2dadb0b9f7b9f2ae1433c8027a7c489dc5e9e47053cca). The pool went from 20,000 to 20,010.347 after the fee.
+
 ## What the agent checks
 
 Rules come from the Thai Revenue Department's VAT Refund for Tourists scheme:

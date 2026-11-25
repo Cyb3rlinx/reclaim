@@ -1,9 +1,9 @@
 {
-  "chainId": 31337,
-  "vault": "0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512",
-  "stable": "0x5FbDB2315678afecb367f032d93F642f64180aa3",
-  "receipt": "0xCafac3dD18aC6c6e92c921884f9E4176737C052c",
-  "deployedAt": "2026-11-25T06:57:55.217Z",
+  "chainId": 97,
+  "vault": "0x3AA2275CFDdED1e638C77edC3B480926f1b569f3",
+  "stable": "0xaB05ce197D2A6c006d2ec17F4084876Fc2160CC0",
+  "receipt": "0xD8D94e08319ECE8D4d17d539A5F0e0A907028438",
+  "deployedAt": "2026-11-25T09:32:42.221Z",
   "vaultAbi": [
     {
       "inputs": [

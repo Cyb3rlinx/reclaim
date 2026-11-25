@@ -5,7 +5,7 @@ import type { ReceiptData } from "@/lib/rules";
 export const runtime = "nodejs";
 
 const SAMPLE: ReceiptData = {
-  storeName: "Siam Paragon — Power Mall (DEMO SAMPLE)",
+  storeName: "Siam Paragon - Power Mall (DEMO SAMPLE)",
   storeTaxId: "0105536092641",
   receiptNumber: "DEMO-PM-000127",
   purchaseDate: new Date(Date.now() - 3 * 86_400_000).toISOString().slice(0, 10),
