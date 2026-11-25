@@ -27,6 +27,7 @@ type Claim = {
   refundAttested: boolean;
   proofURI: string;
   storeName: string;
+  usdPerThb?: string;
 };
 
 type ChainState = {
@@ -377,6 +378,12 @@ export default function Home() {
                 Repay <b className="mono" style={{ color: "var(--ink)" }}>{usd(owed)}</b>
               </span>
             </div>
+            {claim.usdPerThb && Number(claim.usdPerThb) > 0 && (
+              <div className="mt-2.5 flex items-center gap-1.5 text-[11px]" style={{ color: "#FFD400" }}>
+                <i className="inline-block h-1.5 w-1.5 rounded-full" style={{ background: "var(--accent)", boxShadow: "0 0 8px var(--accent)" }} />
+                Priced on-chain by Atlas · THB/USD {(Number(claim.usdPerThb) / 1e18).toFixed(5)}
+              </div>
+            )}
           </div>
 
           <div className="card">

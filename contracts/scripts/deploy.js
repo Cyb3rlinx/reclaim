@@ -38,6 +38,16 @@ async function main() {
   const receipt = await vault.receipt();
   console.log("ReclaimVault", vault.target, "receipt NFT", receipt);
 
+  // THB/USD price: the live Atlas Oracle feed on BSC testnet; a mock feed on a local chain.
+  let feedAddress = process.env.ATLAS_THB_USD_FEED || "0x9f9cb4f972edd5bd59ca045f10821d8a2588bf4e";
+  if (network.name !== "bscTestnet") {
+    const mock = await (await ethers.getContractFactory("MockAggregator")).deploy(18, ethers.parseUnits("0.0293", 18));
+    await mock.waitForDeployment();
+    feedAddress = mock.target;
+  }
+  await (await vault.setPriceFeed(feedAddress, 7 * 24 * 3600, 100)).wait();
+  console.log("Price feed", feedAddress, network.name === "bscTestnet" ? "(Atlas THB/USD)" : "(mock)");
+
   await (await vault.grantRole(await vault.AGENT_ROLE(), agent.address)).wait();
   const oracle = new ethers.Wallet(process.env.DEPLOYER_PRIVATE_KEY, ethers.provider);
   await (await vault.grantRole(await vault.ORACLE_ROLE(), oracle.address)).wait();
@@ -62,6 +72,7 @@ async function main() {
     vault: vault.target,
     stable: stable.target,
     receipt,
+    priceFeed: feedAddress,
     deployedAt: new Date().toISOString(),
     vaultAbi: (await artifacts.readArtifact("ReclaimVault")).abi,
     stableAbi: (await artifacts.readArtifact("MockUSD")).abi,

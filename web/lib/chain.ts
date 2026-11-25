@@ -44,6 +44,8 @@ export async function readClaim(id: number) {
     refundAmount: c.refundAmount.toString(),
     advanceAmount: c.advanceAmount.toString(),
     feeAmount: c.feeAmount.toString(),
+    refundThb: c.refundThb.toString(),
+    usdPerThb: c.usdPerThb.toString(),
     departureDeadline: Number(c.departureDeadline),
     createdAt: Number(c.createdAt),
     status: STATUS[Number(c.status)],

@@ -9,6 +9,7 @@ import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {ReclaimReceipt} from "./ReclaimReceipt.sol";
 import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import {IAggregatorV3} from "./IAggregatorV3.sol";
 
 /// @title ReclaimVault
 /// @notice Tourist VAT-refund advances on BNB Chain.
@@ -24,6 +25,10 @@ import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol
 /// - AGENT_ROLE: the off-chain agent that read and verified the receipt.
 /// - ORACLE_ROLE: attests that the refund was actually claimed at departure
 ///   (designed for an AI resolution oracle such as Cournot).
+/// - Price check: every advance is re-priced on-chain with the Atlas Oracle THB/USD
+///   feed. The agent states the refund in THB and in USD; if the USD amount does not
+///   match THB x Atlas price (within `priceToleranceBps`), or the feed is stale, the
+///   advance is rejected. A compromised agent server cannot over-advance.
 contract ReclaimVault is ERC4626, AccessControl, ReentrancyGuard {
     using SafeERC20 for IERC20;
 
@@ -44,6 +49,8 @@ contract ReclaimVault is ERC4626, AccessControl, ReentrancyGuard {
         uint128 refundAmount; // expected VAT refund, in stablecoin units
         uint128 advanceAmount; // paid to the tourist up front
         uint128 feeAmount; // protocol fee, earned by the pool
+        uint128 refundThb; // expected VAT refund in THB (18 decimals)
+        uint128 usdPerThb; // Atlas THB/USD price used, 18 decimals
         uint64 departureDeadline; // last day the refund can be claimed
         uint64 createdAt;
         Status status;
@@ -57,6 +64,12 @@ contract ReclaimVault is ERC4626, AccessControl, ReentrancyGuard {
     uint256 public feeBps = 500; // 5% of the refund
     uint256 public gracePeriod = 7 days;
     uint256 public maxRefundPerClaim = 5_000 ether;
+
+    // Atlas Oracle THB/USD feed and its safety limits.
+    IAggregatorV3 public thbUsdFeed;
+    uint8 public feedDecimals;
+    uint256 public maxPriceAge = 7 days;
+    uint256 public priceToleranceBps = 100; // 1%
 
     ReclaimReceipt public immutable receipt;
     uint256 public outstandingPrincipal;
@@ -77,6 +90,8 @@ contract ReclaimVault is ERC4626, AccessControl, ReentrancyGuard {
     event RefundAttested(uint256 indexed claimId, string proofURI);
     event Repaid(uint256 indexed claimId, address indexed payer, uint256 amount);
     event Defaulted(uint256 indexed claimId, uint256 lostPrincipal);
+    event AdvancePriced(uint256 indexed claimId, uint256 refundThb, uint256 usdPerThb, uint256 priceUpdatedAt);
+    event PriceFeedUpdated(address feed, uint8 decimals, uint256 maxPriceAge, uint256 priceToleranceBps);
     event TermsUpdated(uint256 advanceBps, uint256 feeBps, uint256 gracePeriod, uint256 maxRefundPerClaim);
 
     error ReceiptAlreadyUsed(uint256 claimId);
@@ -85,6 +100,10 @@ contract ReclaimVault is ERC4626, AccessControl, ReentrancyGuard {
     error InsufficientLiquidity(uint256 available, uint256 needed);
     error WrongStatus(Status current);
     error NotYetDefaultable(uint256 defaultableAt);
+    error PriceFeedNotSet();
+    error InvalidPrice(int256 answer);
+    error StalePrice(uint256 updatedAt);
+    error PriceMismatch(uint256 expectedUsd, uint256 statedUsd);
 
     constructor(IERC20 stable, address admin)
         ERC20("Reclaim Pool Share", "rPOOL")
@@ -99,8 +118,11 @@ contract ReclaimVault is ERC4626, AccessControl, ReentrancyGuard {
     // ------------------------------------------------------------------
 
     /// @notice Called by the agent after it has read and verified a receipt.
+    /// @param refundThb   expected refund in THB (18 decimals), from the receipt.
+    /// @param refundAmount the same refund in stablecoin units; must match refundThb x Atlas price.
     function issueAdvance(
         address tourist,
+        uint128 refundThb,
         uint128 refundAmount,
         uint64 departureDeadline,
         bytes32 receiptHash,
@@ -112,6 +134,7 @@ contract ReclaimVault is ERC4626, AccessControl, ReentrancyGuard {
         if (departureDeadline <= block.timestamp) revert InvalidDeadline();
         uint256 existing = claimIdByReceipt[receiptHash];
         if (existing != 0) revert ReceiptAlreadyUsed(existing);
+        (uint256 usdPerThb, uint256 priceUpdatedAt) = _checkPrice(refundThb, refundAmount);
 
         uint128 advance = uint128((uint256(refundAmount) * advanceBps) / BPS);
         uint128 fee = uint128((uint256(refundAmount) * feeBps) / BPS);
@@ -125,6 +148,8 @@ contract ReclaimVault is ERC4626, AccessControl, ReentrancyGuard {
             refundAmount: refundAmount,
             advanceAmount: advance,
             feeAmount: fee,
+            refundThb: refundThb,
+            usdPerThb: uint128(usdPerThb),
             departureDeadline: departureDeadline,
             createdAt: uint64(block.timestamp),
             status: Status.Advanced,
@@ -139,6 +164,24 @@ contract ReclaimVault is ERC4626, AccessControl, ReentrancyGuard {
         IERC20(asset()).safeTransfer(tourist, advance);
 
         emit AdvanceIssued(claimId, tourist, refundAmount, advance, fee, departureDeadline, receiptHash);
+        emit AdvancePriced(claimId, refundThb, usdPerThb, priceUpdatedAt);
+    }
+
+    /// @dev Reads Atlas THB/USD and checks the agent's USD amount against it.
+    /// Returns the price normalized to 18 decimals and its update time.
+    function _checkPrice(uint256 refundThb, uint256 statedUsd) internal view returns (uint256 usdPerThb, uint256 updatedAt) {
+        IAggregatorV3 feed = thbUsdFeed;
+        if (address(feed) == address(0)) revert PriceFeedNotSet();
+        int256 answer;
+        (, answer,, updatedAt,) = feed.latestRoundData();
+        if (answer <= 0) revert InvalidPrice(answer);
+        if (updatedAt + maxPriceAge < block.timestamp) revert StalePrice(updatedAt);
+
+        uint8 d = feedDecimals;
+        usdPerThb = d <= 18 ? uint256(answer) * 10 ** (18 - d) : uint256(answer) / 10 ** (d - 18);
+        uint256 expectedUsd = Math.mulDiv(refundThb, usdPerThb, 1e18);
+        uint256 diff = expectedUsd > statedUsd ? expectedUsd - statedUsd : statedUsd - expectedUsd;
+        if (diff * BPS > expectedUsd * priceToleranceBps) revert PriceMismatch(expectedUsd, statedUsd);
     }
 
     /// @notice Oracle confirms the tourist claimed the refund at departure.
@@ -216,6 +259,20 @@ contract ReclaimVault is ERC4626, AccessControl, ReentrancyGuard {
         gracePeriod = gracePeriod_;
         maxRefundPerClaim = maxRefund_;
         emit TermsUpdated(advanceBps_, feeBps_, gracePeriod_, maxRefund_);
+    }
+
+    /// @notice Point the vault at the Atlas THB/USD feed and set its safety limits.
+    function setPriceFeed(IAggregatorV3 feed, uint256 maxPriceAge_, uint256 priceToleranceBps_)
+        external
+        onlyRole(DEFAULT_ADMIN_ROLE)
+    {
+        require(address(feed) != address(0), "feed: zero address");
+        require(priceToleranceBps_ <= 1_000, "feed: tolerance > 10%");
+        thbUsdFeed = feed;
+        feedDecimals = feed.decimals();
+        maxPriceAge = maxPriceAge_;
+        priceToleranceBps = priceToleranceBps_;
+        emit PriceFeedUpdated(address(feed), feedDecimals, maxPriceAge_, priceToleranceBps_);
     }
 
     function _roundDown() private pure returns (Math.Rounding) {

@@ -47,8 +47,10 @@ export async function POST(req: Request) {
     if (existing) {
       return NextResponse.json({ ...q, error: `This receipt was already advanced (claim #${existing}).`, claimId: existing }, { status: 409 });
     }
+    // The vault re-prices this on-chain with Atlas THB/USD and rejects it if THB and USD disagree.
     const tx = await v.issueAdvance(
       tourist,
+      parseEther(q.refundThb.toFixed(2)),
       parseEther(q.refundUsd.toFixed(2)),
       Math.floor(new Date(q.deadline).getTime() / 1000),
       q.receiptHash,

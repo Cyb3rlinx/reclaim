@@ -28,6 +28,7 @@ tourist gets 80% now ◄── ReclaimVault (ERC-4626 pool) ◄─────�
 - Only the agent can issue advances and only the oracle can attest (OpenZeppelin `AccessControl`).
 - Lenders can only withdraw idle cash, never money that is currently lent out.
 - Per-claim cap and configurable advance/fee terms (`advance + fee ≤ 100%`).
+- **On-chain price check:** every advance is re-priced with the Atlas Oracle THB/USD feed. The agent states the refund in THB and in USD; the vault rejects it if they differ by more than 1% (`PriceMismatch`), if the feed is older than 7 days (`StalePrice`) or if the price is invalid. A compromised agent server cannot over-advance.
 
 **Sponsor integration:** every advance is priced with the Atlas Oracle THB/USD feed on BSC — see [ATLAS-INTEGRATION.md](ATLAS-INTEGRATION.md).
 
@@ -35,12 +36,16 @@ tourist gets 80% now ◄── ReclaimVault (ERC-4626 pool) ◄─────�
 
 | Contract | Address |
 |---|---|
-| ReclaimVault (ERC-4626 pool) | [`0x3AA2275CFDdED1e638C77edC3B480926f1b569f3`](https://testnet.bscscan.com/address/0x3AA2275CFDdED1e638C77edC3B480926f1b569f3) |
-| ReclaimReceipt (ERC-721) | [`0xD8D94e08319ECE8D4d17d539A5F0e0A907028438`](https://testnet.bscscan.com/address/0xD8D94e08319ECE8D4d17d539A5F0e0A907028438) |
-| MockUSD (test stablecoin) | [`0xaB05ce197D2A6c006d2ec17F4084876Fc2160CC0`](https://testnet.bscscan.com/address/0xaB05ce197D2A6c006d2ec17F4084876Fc2160CC0) |
+| ReclaimVault (ERC-4626 pool) | [`0x90E1380c52b5F7DF86867Da6B0234256b16F59E6`](https://testnet.bscscan.com/address/0x90E1380c52b5F7DF86867Da6B0234256b16F59E6) |
+| ReclaimReceipt (ERC-721) | [`0x0aB31E6fCFE3cBbAab3794cd7bFF24C679588B96`](https://testnet.bscscan.com/address/0x0aB31E6fCFE3cBbAab3794cd7bFF24C679588B96) |
+| MockUSD (test stablecoin) | [`0x1ec05faE5e22055a8351fCD9A7404BbcDd51070C`](https://testnet.bscscan.com/address/0x1ec05faE5e22055a8351fCD9A7404BbcDd51070C) |
 | Atlas Oracle THB/USD feed | [`0x9f9cb4f972edd5bd59ca045f10821d8a2588bf4e`](https://testnet.bscscan.com/address/0x9f9cb4f972edd5bd59ca045f10821d8a2588bf4e) |
 
-First full cycle on testnet (claim #1): [advance](https://testnet.bscscan.com/tx/0x9943b5550a7494f9a71ad7fe51b440f3af63a7528a4949eea586c87a8ab70730) → [refund attested](https://testnet.bscscan.com/tx/0x9f66b923724e714eed172f45ed2d039ec249c01c7b88dff6632e2d5d5b160ec9) → [repaid](https://testnet.bscscan.com/tx/0xe04e3099af256da714c2dadb0b9f7b9f2ae1433c8027a7c489dc5e9e47053cca). The pool went from 20,000 to 20,010.347 after the fee.
+Full cycle on the current vault (claim #1, priced on-chain by Atlas at 0.02930205 USD/THB): [advance](https://testnet.bscscan.com/tx/0x928d6340436f11b94f48399ce66bc4a75f997e2f231f8d539c7621ff230ad3fd) → [refund attested](https://testnet.bscscan.com/tx/0x491027061aadfee3e2cf49268a09d5cbb9a9fcd9f2759aa68944a8541d0ba700) → [repaid](https://testnet.bscscan.com/tx/0x8ba0d3265d094d6718a5a0880c318d567abfe8fe8ae2f6f27e4bf48327d3e518). The pool went from 20,000 to 20,010.35 after the fee.
+
+**Price guard, proven on testnet:** the agent tried to advance against a refund overstated by 30% ($269.02 instead of the Atlas-priced $206.94). The vault reverted with `PriceMismatch(206.94, 269.02)`: [failed tx](https://testnet.bscscan.com/tx/0xb13b658871a646cd20dc365f273401537361a5e46fa278aa5d221846111b166f). Reproduce: `npx hardhat run scripts/prove-price-guard.js --network bscTestnet`.
+
+An earlier version of the vault (without the on-chain price check) ran the first cycles at `0x3AA2275CFDdED1e638C77edC3B480926f1b569f3`.
 
 ## What the agent checks
 
@@ -63,7 +68,7 @@ Requirements: Node.js 20+.
 # 1. Contracts: install, test, start a local chain
 cd contracts
 npm install
-npx hardhat test                 # 9 tests
+npx hardhat test                 # 17 tests
 cp .env.example .env             # add test-only private keys (see file)
 npx hardhat node                 # leave running in its own terminal
 

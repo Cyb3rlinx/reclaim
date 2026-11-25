@@ -7,7 +7,7 @@ const pk = process.env.DEPLOYER_PRIVATE_KEY;
 module.exports = {
   solidity: {
     version: "0.8.24",
-    settings: { optimizer: { enabled: true, runs: 200 }, evmVersion: "cancun" },
+    settings: { optimizer: { enabled: true, runs: 200 }, viaIR: true, evmVersion: "cancun" },
   },
   networks: {
     localhost: { url: "http://127.0.0.1:8545" },

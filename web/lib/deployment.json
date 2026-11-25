@@ -1,9 +1,10 @@
 {
   "chainId": 97,
-  "vault": "0x3AA2275CFDdED1e638C77edC3B480926f1b569f3",
-  "stable": "0xaB05ce197D2A6c006d2ec17F4084876Fc2160CC0",
-  "receipt": "0xD8D94e08319ECE8D4d17d539A5F0e0A907028438",
-  "deployedAt": "2026-11-25T09:32:42.221Z",
+  "vault": "0x90E1380c52b5F7DF86867Da6B0234256b16F59E6",
+  "stable": "0x1ec05faE5e22055a8351fCD9A7404BbcDd51070C",
+  "receipt": "0x0aB31E6fCFE3cBbAab3794cd7bFF24C679588B96",
+  "priceFeed": "0x9f9cb4f972edd5bd59ca045f10821d8a2588bf4e",
+  "deployedAt": "2026-11-25T11:49:54.435Z",
   "vaultAbi": [
     {
       "inputs": [
@@ -241,12 +242,44 @@
     {
       "inputs": [
         {
+          "internalType": "int256",
+          "name": "answer",
+          "type": "int256"
+        }
+      ],
+      "name": "InvalidPrice",
+      "type": "error"
+    },
+    {
+      "inputs": [
+        {
           "internalType": "uint256",
           "name": "defaultableAt",
           "type": "uint256"
         }
       ],
       "name": "NotYetDefaultable",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "PriceFeedNotSet",
+      "type": "error"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "expectedUsd",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "statedUsd",
+          "type": "uint256"
+        }
+      ],
+      "name": "PriceMismatch",
       "type": "error"
     },
     {
@@ -274,6 +307,17 @@
         }
       ],
       "name": "SafeERC20FailedOperation",
+      "type": "error"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "updatedAt",
+          "type": "uint256"
+        }
+      ],
+      "name": "StalePrice",
       "type": "error"
     },
     {
@@ -334,6 +378,37 @@
         }
       ],
       "name": "AdvanceIssued",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "uint256",
+          "name": "claimId",
+          "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "refundThb",
+          "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "usdPerThb",
+          "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "priceUpdatedAt",
+          "type": "uint256"
+        }
+      ],
+      "name": "AdvancePriced",
       "type": "event"
     },
     {
@@ -409,6 +484,37 @@
         }
       ],
       "name": "Deposit",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": false,
+          "internalType": "address",
+          "name": "feed",
+          "type": "address"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint8",
+          "name": "decimals",
+          "type": "uint8"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "maxPriceAge",
+          "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "priceToleranceBps",
+          "type": "uint256"
+        }
+      ],
+      "name": "PriceFeedUpdated",
       "type": "event"
     },
     {
@@ -913,6 +1019,19 @@
       "type": "function"
     },
     {
+      "inputs": [],
+      "name": "feedDecimals",
+      "outputs": [
+        {
+          "internalType": "uint8",
+          "name": "",
+          "type": "uint8"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
       "inputs": [
         {
           "internalType": "uint256",
@@ -942,6 +1061,16 @@
             {
               "internalType": "uint128",
               "name": "feeAmount",
+              "type": "uint128"
+            },
+            {
+              "internalType": "uint128",
+              "name": "refundThb",
+              "type": "uint128"
+            },
+            {
+              "internalType": "uint128",
+              "name": "usdPerThb",
               "type": "uint128"
             },
             {
@@ -1071,6 +1200,11 @@
         },
         {
           "internalType": "uint128",
+          "name": "refundThb",
+          "type": "uint128"
+        },
+        {
+          "internalType": "uint128",
           "name": "refundAmount",
           "type": "uint128"
         },
@@ -1142,6 +1276,19 @@
         }
       ],
       "name": "maxMint",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "maxPriceAge",
       "outputs": [
         {
           "internalType": "uint256",
@@ -1344,6 +1491,19 @@
     },
     {
       "inputs": [],
+      "name": "priceToleranceBps",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
       "name": "receipt",
       "outputs": [
         {
@@ -1436,6 +1596,29 @@
     {
       "inputs": [
         {
+          "internalType": "contract IAggregatorV3",
+          "name": "feed",
+          "type": "address"
+        },
+        {
+          "internalType": "uint256",
+          "name": "maxPriceAge_",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "priceToleranceBps_",
+          "type": "uint256"
+        }
+      ],
+      "name": "setPriceFeed",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
           "internalType": "uint256",
           "name": "advanceBps_",
           "type": "uint256"
@@ -1488,6 +1671,19 @@
           "internalType": "string",
           "name": "",
           "type": "string"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "thbUsdFeed",
+      "outputs": [
+        {
+          "internalType": "contract IAggregatorV3",
+          "name": "",
+          "type": "address"
         }
       ],
       "stateMutability": "view",
