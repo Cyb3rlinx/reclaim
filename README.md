@@ -81,7 +81,7 @@ npm install
 npm run dev -- -p 3210           # open http://localhost:3210
 ```
 
-Click **Use demo receipt** → **Get $… now** → **Simulate airport refund** → **Repay**.
+Click **Sample P.P.10 photo** (the AI agent reads a bundled demo P.P.10 form; needs `ANTHROPIC_API_KEY`) or **Use demo receipt** (no key needed) → **Get $… now** → **Simulate airport refund** → **Repay**.
 To read real receipt photos, add `ANTHROPIC_API_KEY=...` to `web/.env.local`.
 
 ### Deploy to BSC testnet
