@@ -4,16 +4,18 @@ import type { ReceiptData } from "@/lib/rules";
 
 export const runtime = "nodejs";
 
-const SAMPLE: ReceiptData = {
+// Demo receipt: a fresh receipt number per request, so the demo can run many times
+// without tripping the on-chain duplicate-receipt guard (which is what a real fraudster would hit).
+const sample = (): ReceiptData => ({
   storeName: "Siam Paragon - Power Mall (DEMO SAMPLE)",
   storeTaxId: "0105536092641",
-  receiptNumber: "DEMO-PM-000127",
+  receiptNumber: `DEMO-PM-${Date.now().toString().slice(-6)}`,
   purchaseDate: new Date(Date.now() - 3 * 86_400_000).toISOString().slice(0, 10),
   totalThb: 127_000,
   vatThb: 8_308.41,
   hasVatRefundForm: true,
   items: ["Laptop 16-inch"],
-};
+});
 
 const SCHEMA = {
   type: "object",
@@ -44,12 +46,12 @@ export async function POST(req: Request) {
   const wantDemo = form.get("demo") === "1";
 
   if (wantDemo || !(file instanceof File)) {
-    return NextResponse.json({ demo: true, receipt: SAMPLE, notes: "Demo sample — no image was read." });
+    return NextResponse.json({ demo: true, receipt: sample(), notes: "Demo sample — no image was read." });
   }
   if (!process.env.ANTHROPIC_API_KEY) {
     return NextResponse.json({
       demo: true,
-      receipt: SAMPLE,
+      receipt: sample(),
       notes: "ANTHROPIC_API_KEY is not set, so the agent returned the demo sample instead of reading your photo.",
     });
   }

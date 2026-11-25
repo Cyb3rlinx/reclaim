@@ -65,6 +65,12 @@ export default function Home() {
     refresh();
   }, [refresh]);
 
+  // Each step is its own "screen" on a phone: jump back to the top when the stage changes.
+  const stage = chain?.claim ? 3 : quote ? 2 : 1;
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }, [stage]);
+
   async function scan(demo: boolean) {
     setBusy("scan");
     setError(null);
@@ -145,60 +151,73 @@ export default function Home() {
   }
 
   const claim = chain?.claim;
-  const steps = [
-    { label: "Receipt read", done: !!receipt },
-    { label: "Verified", done: !!quote?.eligible },
-    { label: "Tokenized", done: !!claim },
-    { label: "Paid", done: !!claim },
-    { label: "Refund at airport", done: !!claim?.refundAttested || claim?.status === "Settled" },
-    { label: "Settled", done: claim?.status === "Settled" },
-  ];
+  const settled = claim?.status === "Settled";
+  const attested = !!claim?.refundAttested || settled;
+  const owed = quote ? quote.advanceUsd + quote.feeUsd : 0;
+  const failed = quote?.checks.filter((c) => !c.ok).length ?? 0;
+  const explorer = chain?.explorer;
+  const txAttest = txs.find((t) => t.label.startsWith("Oracle"));
+  const txRepay = txs.find((t) => t.label.startsWith("Advance +"));
+
+  function reset() {
+    setQuote(null);
+    setReceipt(null);
+    setClaimId(null);
+    setTxs([]);
+    setFile(null);
+    setPreview(null);
+    setError(null);
+    refresh(0);
+  }
 
   return (
-    <main className="mx-auto max-w-5xl px-4 py-8 sm:py-12">
-      <header className="mb-8 flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <p className="mono text-xs tracking-widest" style={{ color: "var(--accent)" }}>
-            RECLAIM · BNB CHAIN
-          </p>
-          <h1 className="mt-2 text-3xl font-bold sm:text-4xl">Your VAT refund, today.</h1>
-          <p className="muted mt-2 max-w-xl">
-            Shopping in Thailand? Your 7% VAT refund is locked until the airport. Scan your receipt — our agent verifies it,
-            mints it as an on-chain claim and advances you the money in stablecoins right now.
-          </p>
+    <main className="mx-auto flex min-h-screen w-full max-w-[440px] flex-col gap-4 px-5 pb-12 pt-6">
+      {/* Brand bar */}
+      <header className="flex items-center justify-between">
+        <div className="flex items-center gap-2.5 text-[13px] font-extrabold tracking-[0.24em]">
+          <div className="mark">R</div>RECLAIM
         </div>
-        <PoolCard chain={chain} />
+        <span className="chip">{explorer?.includes("testnet") ? "BSC TESTNET" : "BNB CHAIN"}</span>
       </header>
 
-      <ol className="mb-6 grid grid-cols-3 gap-2 sm:grid-cols-6">
-        {steps.map((s, i) => (
-          <li key={s.label} className="panel px-3 py-2 text-xs" style={{ borderColor: s.done ? "var(--accent)" : undefined }}>
-            <span className="mono" style={{ color: s.done ? "var(--accent)" : "var(--muted)" }}>
-              {s.done ? "✓" : i + 1}
-            </span>{" "}
-            {s.label}
-          </li>
-        ))}
-      </ol>
-
       {error && (
-        <div className="panel mb-6 px-4 py-3 text-sm" style={{ borderColor: "var(--bad)", color: "var(--bad)" }}>
+        <div className="card text-sm" style={{ borderColor: "rgba(255,107,107,.45)", color: "var(--bad)" }}>
           {error}
         </div>
       )}
 
-      <div className="grid gap-6 lg:grid-cols-2">
-        {/* 1. Scan */}
-        <section className="panel p-5">
-          <h2 className="font-semibold">1 · Scan your receipt</h2>
-          <p className="muted mt-1 text-sm">Photo of the tax invoice from a store with the “VAT Refund for Tourists” sign.</p>
-          <label className="mt-4 flex cursor-pointer flex-col items-center justify-center rounded-xl border border-dashed p-6 text-center text-sm" style={{ borderColor: "var(--line)" }}>
+      {/* ========== STEP 1 · SCAN ========== */}
+      {!quote && (
+        <>
+          <h1 className="mt-1 text-[32px] font-extrabold leading-[1.08] tracking-tight">
+            Your VAT refund,
+            <br />
+            <span className="g">today.</span>
+          </h1>
+          <p className="muted text-[13.5px] leading-relaxed">
+            Shopping in Thailand? Your 7% VAT refund is locked until the airport. Scan your tax invoice: our AI agent checks it
+            and pays you up to 80% of your refund in seconds.
+          </p>
+
+          <label className="scan">
             {preview ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={preview} alt="Receipt preview" className="max-h-56 rounded-lg" />
+              <img src={preview} alt="Receipt preview" className="max-h-64 rounded-lg shadow-2xl" />
             ) : (
-              <span className="muted">Tap to choose a photo (JPG / PNG)</span>
+              <div className="px-10 text-center">
+                <svg className="mx-auto mb-3" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#f7d774" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M3 8V5a2 2 0 0 1 2-2h3M16 3h3a2 2 0 0 1 2 2v3M21 16v3a2 2 0 0 1-2 2h-3M8 21H5a2 2 0 0 1-2-2v-3" />
+                  <circle cx="12" cy="12" r="3.2" />
+                </svg>
+                <div className="text-sm font-semibold">Tap to scan your receipt</div>
+                <div className="muted mt-1 text-xs">Tax invoice with the &ldquo;VAT Refund for Tourists&rdquo; sign · JPG / PNG</div>
+              </div>
             )}
+            <i className="corner c1" />
+            <i className="corner c2" />
+            <i className="corner c3" />
+            <i className="corner c4" />
+            {busy === "scan" && <div className="beam" />}
             <input
               type="file"
               accept="image/jpeg,image/png,image/webp"
@@ -210,24 +229,91 @@ export default function Home() {
               }}
             />
           </label>
-          <p className="muted mt-2 text-xs">Cover your passport number before uploading. The agent ignores personal IDs.</p>
-          <div className="mt-4 flex flex-wrap gap-2">
-            <button className="btn btn-primary" disabled={!file || !!busy} onClick={() => scan(false)}>
-              {busy === "scan" ? "Agent reading…" : "Read with AI agent"}
+          <p className="muted -mt-1 text-center text-[11px]">Cover your passport number. The agent ignores personal IDs.</p>
+
+          <button className="btn btn-primary" disabled={!file || !!busy} onClick={() => scan(false)}>
+            {busy === "scan" ? "Agent reading your receipt…" : "Read with AI agent"}
+          </button>
+          <button className="btn btn-ghost" disabled={!!busy} onClick={() => scan(true)}>
+            Use demo receipt
+          </button>
+
+          <div className="grid grid-cols-3 gap-2">
+            <Pill label="Advance" value="80%" gold />
+            <Pill label="Fee" value="5%" />
+            <Pill label="Payout" value="~10s" />
+          </div>
+          <PoolCard chain={chain} />
+        </>
+      )}
+
+      {/* ========== STEP 2 · VERIFY + OFFER ========== */}
+      {quote && receipt && !claim && (
+        <>
+          <div className="flex items-center justify-between">
+            <button className="text-[15px] font-bold" disabled={!!busy} onClick={reset}>
+              ‹&nbsp; Agent check
             </button>
-            <button className="btn btn-ghost" disabled={!!busy} onClick={() => scan(true)}>
-              Use demo receipt
-            </button>
+            <span className="chip" style={failed ? { color: "var(--bad)", borderColor: "rgba(255,107,107,.4)" } : undefined}>
+              {quote.checks.length - failed} / {quote.checks.length} PASSED
+            </span>
           </div>
 
-          {receipt && (
-            <div className="mt-5 space-y-2 text-sm">
-              {isDemo && (
-                <p className="rounded-lg px-3 py-2 text-xs" style={{ background: "#3a2f0b", color: "var(--accent)" }}>
-                  DEMO DATA — {parseNote || "sample receipt"}
-                </p>
-              )}
-              {!isDemo && parseNote && <p className="muted text-xs">Agent note: {parseNote}</p>}
+          {isDemo && <div className="chip self-start">DEMO RECEIPT · SAMPLE DATA</div>}
+          {!isDemo && parseNote && <p className="muted text-xs">Agent note: {parseNote}</p>}
+
+          <div className="card flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <div className="truncate text-[15px] font-bold">{receipt.storeName || "Unknown store"}</div>
+              <div className="muted mt-0.5 text-[11.5px]">
+                {receipt.receiptNumber || "no receipt no."} · {receipt.purchaseDate}
+              </div>
+            </div>
+            <div className="text-right">
+              <div className="mono text-lg font-extrabold">{thb(receipt.totalThb)}</div>
+              <div className="muted text-[11.5px]">VAT {thb(quote.vatThb)}</div>
+            </div>
+          </div>
+
+          <ul className="card grid gap-2.5 text-[13px]">
+            {quote.checks.map((c) => (
+              <li key={c.id} className="flex items-start gap-2.5">
+                <span className={`ck ${c.ok ? "ck-ok" : "ck-bad"}`}>{c.ok ? "✓" : "✕"}</span>
+                <span className="min-w-0 flex-1">
+                  {c.label}
+                  <span className="muted block text-[11px]">{c.detail}</span>
+                </span>
+              </li>
+            ))}
+          </ul>
+
+          <div className="offer">
+            <div className="label" style={{ color: "#e8c766" }}>
+              {quote.eligible ? "Available now" : "Not eligible"}
+            </div>
+            <div className="big g mono mt-2">{usd(quote.advanceUsd)}</div>
+            <div className="muted mt-3 flex justify-between gap-2 text-[11.5px]">
+              <span>
+                Est. refund <b className="mono" style={{ color: "var(--ink)" }}>{usd(quote.refundUsd)}</b>
+              </span>
+              <span>
+                Fee <b className="mono" style={{ color: "var(--ink)" }}>{usd(quote.feeUsd)}</b>
+              </span>
+              <span>
+                Due <b style={{ color: "var(--ink)" }}>{fmtDate(quote.deadline)}</b>
+              </span>
+            </div>
+            <div className="mt-2.5 flex items-center gap-1.5 text-[11px]" style={{ color: "#e8c766" }}>
+              <i className="inline-block h-1.5 w-1.5 rounded-full" style={{ background: "var(--accent)", boxShadow: "0 0 8px var(--accent)" }} />
+              THB/USD {quote.fx.usdPerThb.toFixed(5)} · {quote.fx.source}
+            </div>
+          </div>
+
+          <details className="card text-sm">
+            <summary className="cursor-pointer font-semibold" style={{ color: "#e8c766" }}>
+              Edit receipt details &amp; wallet
+            </summary>
+            <div className="mt-3 space-y-2">
               <Field label="Store" value={receipt.storeName} onChange={(v) => edit("storeName", v)} />
               <div className="grid grid-cols-2 gap-2">
                 <Field label="Tax ID" value={receipt.storeTaxId} onChange={(v) => edit("storeTaxId", v)} />
@@ -239,105 +325,97 @@ export default function Home() {
                 <input type="checkbox" checked={receipt.hasVatRefundForm} onChange={(e) => edit("hasVatRefundForm", e.target.checked)} />
                 Store gave me the VAT refund form (P.P.10)
               </label>
+              <Field
+                label="Your BNB Chain wallet (blank = demo wallet)"
+                value={tourist}
+                placeholder={chain?.addresses?.demoTourist ?? "0x…"}
+                onChange={setTourist}
+              />
             </div>
-          )}
-        </section>
+          </details>
 
-        {/* 2. Verify + advance */}
-        <section className="panel p-5">
-          <h2 className="font-semibold">2 · Agent verification & advance</h2>
-          {!quote && <p className="muted mt-2 text-sm">Scan a receipt to see what the agent checks.</p>}
-          {quote && (
+          <button className="btn btn-primary" disabled={!quote.eligible || !!busy || !chain?.deployed} onClick={advance}>
+            {busy === "advance" ? "Minting claim & paying…" : `Get ${usd(quote.advanceUsd)} now`}
+          </button>
+          {!chain?.deployed && <p className="muted text-center text-xs">Contracts not deployed yet — advance is disabled.</p>}
+        </>
+      )}
+
+      {/* ========== STEP 3 · PAID + LIFECYCLE ========== */}
+      {claim && quote && (
+        <>
+          <div className="mt-2 flex flex-col items-center gap-2 text-center">
+            <div className="ring">
+              <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#140e00" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M5 12.5 10 17 19 7.5" />
+              </svg>
+            </div>
+            <div className="label mt-2">{settled ? "Claim settled" : "Sent to your wallet"}</div>
+            <div className="big g mono">{usd(quote.advanceUsd)}</div>
+            <div className="muted text-[12.5px]">
+              {settled ? "The pool earned the fee. You never waited for the airport." : `Paid on BNB Chain to ${short(claim.tourist)}`}
+            </div>
+          </div>
+
+          <div className="nft">
+            <div className="flex items-center justify-between">
+              <span className="label" style={{ color: "#e8c766" }}>
+                Reclaim Receipt NFT
+              </span>
+              <span className="chip">{claim.status.toUpperCase()}</span>
+            </div>
+            <div className="g mt-2 text-2xl font-extrabold">Claim #{claim.id}</div>
+            <div className="muted mt-2 flex justify-between text-[12px]">
+              <span>
+                Refund right <b className="mono" style={{ color: "var(--ink)" }}>{usd(quote.refundUsd)}</b>
+              </span>
+              <span>
+                Repay <b className="mono" style={{ color: "var(--ink)" }}>{usd(owed)}</b>
+              </span>
+            </div>
+          </div>
+
+          <div className="card">
+            <Step state="done" title="Receipt verified by AI agent" />
+            <Step state="done" title="Claim tokenized & paid" desc={txs[0] ? <TxLink t={txs[0]} /> : undefined} />
+            <Step
+              state={attested ? "done" : "next"}
+              title={attested ? "Refund collected at the airport" : "Collect refund at the airport"}
+              desc={attested ? (txAttest ? <TxLink t={txAttest} /> : "Attested by oracle") : `Before ${fmtDate(quote.deadline)}`}
+            />
+            <Step
+              state={settled ? "done" : attested ? "next" : "todo"}
+              title={settled ? `Repaid ${usd(owed)} · settled` : `Repay ${usd(owed)} · claim settled`}
+              desc={settled && txRepay ? <TxLink t={txRepay} /> : undefined}
+            />
+          </div>
+
+          {!settled && (
             <>
-              <ul className="mt-3 space-y-1.5 text-sm">
-                {quote.checks.map((c) => (
-                  <li key={c.id} className="flex gap-2">
-                    <span style={{ color: c.ok ? "var(--ok)" : "var(--bad)" }}>{c.ok ? "✓" : "✗"}</span>
-                    <span>
-                      {c.label} <span className="muted text-xs">· {c.detail}</span>
-                    </span>
-                  </li>
-                ))}
-              </ul>
-
-              <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
-                <Stat label="VAT on receipt" value={thb(quote.vatThb)} />
-                <Stat label="Est. refund at airport" value={`${thb(quote.refundThb)} ≈ ${usd(quote.refundUsd)}`} />
-                <Stat label="You get now (80%)" value={usd(quote.advanceUsd)} big />
-                <Stat label="Fee (5%) · due by" value={`${usd(quote.feeUsd)} · ${quote.deadline.slice(0, 10)}`} />
-              </div>
-              <p className="muted mt-2 text-xs">
-                FX 1 THB = {quote.fx.usdPerThb.toFixed(5)} USD ({quote.fx.source}). Refund estimated at 85% of VAT after operator fees.
-              </p>
-
-              <div className="mt-4">
-                <Field
-                  label="Your BNB Chain wallet (optional — blank uses the demo wallet)"
-                  value={tourist}
-                  placeholder={chain?.addresses?.demoTourist ?? "0x…"}
-                  onChange={setTourist}
-                />
-              </div>
-              <button className="btn btn-primary mt-3 w-full" disabled={!quote.eligible || !!busy || !!claimId || !chain?.deployed} onClick={advance}>
-                {busy === "advance" ? "Minting claim & paying…" : `Get ${usd(quote.advanceUsd)} now`}
+              <button className="btn btn-ghost" disabled={!!busy || attested} onClick={() => settle("attest")}>
+                {busy === "attest" ? "Oracle checking…" : "✈  Simulate airport refund (oracle)"}
               </button>
-              {!chain?.deployed && <p className="muted mt-2 text-xs">Contracts not deployed yet — advance is disabled.</p>}
+              <button className="btn btn-primary" disabled={!!busy || claim.status !== "Advanced"} onClick={() => settle("repay")}>
+                {busy === "repay" ? "Repaying…" : `Repay ${usd(owed)}`}
+              </button>
             </>
           )}
-        </section>
-      </div>
-
-      {/* 3. Claim lifecycle */}
-      {claim && (
-        <section className="panel mt-6 p-5">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <h2 className="font-semibold">3 · Your on-chain claim #{claim.id}</h2>
-            <span className="mono rounded-full px-3 py-1 text-xs" style={{ background: "#3a2f0b", color: "var(--accent)" }}>
-              {claim.status}
-              {claim.refundAttested && claim.status === "Advanced" ? " · refund attested" : ""}
-            </span>
-          </div>
-          <p className="muted mt-1 text-sm">
-            Reclaim Receipt NFT held by {short(claim.tourist)} · {claim.storeName}
-          </p>
-          <div className="mt-4 flex flex-wrap gap-2">
-            <button className="btn btn-ghost" disabled={!!busy || claim.refundAttested || claim.status !== "Advanced"} onClick={() => settle("attest")}>
-              {busy === "attest" ? "Oracle checking…" : "✈ Simulate airport refund (oracle)"}
+          {settled && (
+            <button className="btn btn-ghost" onClick={reset}>
+              Scan another receipt
             </button>
-            <button className="btn btn-primary" disabled={!!busy || claim.status !== "Advanced"} onClick={() => settle("repay")}>
-              {busy === "repay" ? "Repaying…" : "Repay advance + fee"}
-            </button>
-          </div>
-          {claim.status === "Settled" && (
-            <p className="mt-3 text-sm" style={{ color: "var(--ok)" }}>
-              Settled. The pool earned the fee and the tourist never waited for the airport.
-            </p>
           )}
-        </section>
+          <PoolCard chain={chain} />
+        </>
       )}
 
-      {txs.length > 0 && (
-        <section className="panel mt-6 p-5 text-sm">
-          <h2 className="font-semibold">On-chain proof (BSC testnet)</h2>
-          <ul className="mt-2 space-y-1">
-            {txs.map((t) => (
-              <li key={t.url}>
-                <a className="underline" style={{ color: "var(--accent)" }} href={t.url} target="_blank" rel="noreferrer">
-                  {t.label} ↗
-                </a>
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
-
-      <footer className="muted mt-10 text-xs">
-        Testnet prototype built at BNB Bangkok 2026. A testnet stablecoin stands in for lisUSD/USDT. No token is issued. Not financial advice.
-        {chain?.addresses && chain.explorer && (
+      <footer className="muted mt-auto pt-6 text-center text-[11px] leading-relaxed">
+        Testnet prototype · BNB Bangkok 2026 · A testnet stablecoin stands in for lisUSD/USDT · No token is issued · Not financial advice
+        {chain?.addresses && explorer && (
           <>
-            {" "}Vault{" "}
-            <a className="underline" href={`${chain.explorer}/address/${chain.addresses.vault}`} target="_blank" rel="noreferrer">
-              {short(chain.addresses.vault)}
+            {" · "}
+            <a className="underline" href={`${explorer}/address/${chain.addresses.vault}`} target="_blank" rel="noreferrer">
+              Vault {short(chain.addresses.vault)}
             </a>
           </>
         )}
@@ -346,26 +424,61 @@ export default function Home() {
   );
 }
 
-function PoolCard({ chain }: { chain: ChainState | null }) {
-  if (!chain) return <div className="panel px-4 py-3 text-xs muted">Loading pool…</div>;
-  if (!chain.deployed) return <div className="panel px-4 py-3 text-xs muted">Pool: not deployed yet</div>;
-  if (!chain.pool) return <div className="panel px-4 py-3 text-xs" style={{ color: "var(--bad)" }}>Pool unreachable</div>;
+function fmtDate(iso: string) {
+  return new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+}
+
+function TxLink({ t }: { t: { label: string; url: string } }) {
+  const hash = t.url.split("/").pop() ?? "";
   return (
-    <div className="panel grid grid-cols-3 gap-4 px-4 py-3 text-xs">
-      <Stat label="Pool value" value={usd(chain.pool.totalAssets)} />
-      <Stat label="Advanced" value={usd(chain.pool.outstanding)} />
-      <Stat label="Claims" value={String(chain.pool.claims)} />
+    <a className="underline" href={t.url} target="_blank" rel="noreferrer">
+      {short(hash)} · BscScan ↗
+    </a>
+  );
+}
+
+function Step({ state, title, desc }: { state: "done" | "next" | "todo"; title: string; desc?: React.ReactNode }) {
+  return (
+    <div className={`st ${state}`}>
+      <div className="b">{state === "done" ? "✓" : ""}</div>
+      <div>
+        <div className="tt text-[13px] font-semibold">{title}</div>
+        {desc && <div className="muted mt-0.5 text-[11.5px]">{desc}</div>}
+      </div>
     </div>
   );
 }
 
-function Stat({ label, value, big }: { label: string; value: string; big?: boolean }) {
+function Pill({ label, value, gold }: { label: string; value: string; gold?: boolean }) {
+  return (
+    <div className="rounded-[14px] border px-3 py-2.5" style={{ borderColor: "var(--line)", background: "rgba(255,255,255,.02)" }}>
+      <div className="label">{label}</div>
+      <div className={`mt-0.5 text-[15px] font-bold ${gold ? "g" : ""}`}>{value}</div>
+    </div>
+  );
+}
+
+function PoolCard({ chain }: { chain: ChainState | null }) {
+  if (!chain) return <div className="card muted text-xs">Loading liquidity pool…</div>;
+  if (!chain.deployed) return <div className="card muted text-xs">Liquidity pool: not deployed yet</div>;
+  if (!chain.pool) return <div className="card text-xs" style={{ color: "var(--bad)" }}>Liquidity pool unreachable</div>;
+  return (
+    <div className="card">
+      <div className="label mb-2">Liquidity pool · ERC-4626</div>
+      <div className="grid grid-cols-3 gap-3">
+        <Stat label="Value" value={usd(chain.pool.totalAssets)} />
+        <Stat label="Advanced" value={usd(chain.pool.outstanding)} />
+        <Stat label="Claims" value={String(chain.pool.claims)} />
+      </div>
+    </div>
+  );
+}
+
+function Stat({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <div className="muted text-xs">{label}</div>
-      <div className={`mono ${big ? "text-xl font-bold" : "font-semibold"}`} style={big ? { color: "var(--accent)" } : undefined}>
-        {value}
-      </div>
+      <div className="muted text-[11px]">{label}</div>
+      <div className="mono text-sm font-bold">{value}</div>
     </div>
   );
 }
