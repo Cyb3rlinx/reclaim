@@ -549,6 +549,17 @@
       qr.insertAdjacentHTML("beforeend", `<i style="background:${on ? "#0B0B0B" : "transparent"}"></i>`);
     }
   }
+
+  // ?only=N shows a single phone (0-based figure index) on a clean background, for exports.
+  const only = new URLSearchParams(location.search).get("only");
+  if (only !== null) {
+    const figs = [...document.querySelectorAll("figure")];
+    const keep = figs[Number(only)];
+    document.body.innerHTML = "";
+    document.body.style.cssText = "margin:0;padding:24px;background:#0B0B0B;display:flex;justify-content:center;min-height:0";
+    keep.querySelector("figcaption")?.remove();
+    document.body.appendChild(keep);
+  }
 </script>
 </body>
 </html>

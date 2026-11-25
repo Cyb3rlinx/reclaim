@@ -4,7 +4,7 @@
 
 ## The problem the feed solves
 
-Reclaim advances tourists their Thai VAT refund **in US-dollar stablecoins**, but the refund itself is fixed **in Thai baht**. Every advance is a currency conversion. If the THB→USD rate is wrong, the protocol either under-pays the tourist or lends out more than the refund can repay, and liquidity providers lose money. The exchange rate is therefore not decoration: **it decides how much money leaves the pool.**
+Reclaim advances tourists their Thai VAT refund **in US-dollar stablecoins**, but the refund itself is fixed **in Thai baht**. Every advance is a currency conversion. If the THB→USD rate is wrong, the protocol either under-pays the tourist or lends out more than the refund can repay, and liquidity providers lose money. The exchange rate is therefore not decoration: **it decides how much money leaves the pool.** **Who it is for:** international tourists shopping in Thailand who want their VAT refund now, and stablecoin lenders who fund those advances.
 
 ## What we use
 
