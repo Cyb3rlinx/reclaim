@@ -30,6 +30,8 @@ tourist gets 80% now ◄── ReclaimVault (ERC-4626 pool) ◄─────�
 - Per-claim cap and configurable advance/fee terms (`advance + fee ≤ 100%`).
 - **On-chain price check:** every advance is re-priced with the Atlas Oracle THB/USD feed. The agent states the refund in THB and in USD; the vault rejects it if they differ by more than 1% (`PriceMismatch`), if the feed is older than 7 days (`StalePrice`) or if the price is invalid. A compromised agent server cannot over-advance.
 
+**Live app (Cloudflare Workers, BSC testnet):** https://reclaim.interactive-archetype-journey.workers.dev
+
 **Demo video (1:37, real AI read + live BSC testnet transactions):** [launch/reclaim-demo.mp4](launch/reclaim-demo.mp4)
 
 **Sponsor integration:** every advance is priced with the Atlas Oracle THB/USD feed on BSC — see [ATLAS-INTEGRATION.md](ATLAS-INTEGRATION.md).
@@ -85,6 +87,15 @@ npm run dev -- -p 3210           # open http://localhost:3210
 
 Click **Sample P.P.10 photo** (the AI agent reads a bundled demo P.P.10 form; needs `ANTHROPIC_API_KEY`) or **Use demo receipt** (no key needed) → **Get $… now** → **Simulate airport refund** → **Repay**.
 To read real receipt photos, add `ANTHROPIC_API_KEY=...` to `web/.env.local`.
+
+### Deploy the web app to Cloudflare Workers
+
+```bash
+cd web
+npx wrangler login
+npm run cf:deploy     # builds without local .env files, so no secret is baked in
+npm run cf:secrets    # copies server keys from .env.local into Worker secrets
+```
 
 ### Deploy to BSC testnet
 
