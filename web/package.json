@@ -6,21 +6,30 @@
     "dev": "next dev --turbopack",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "cf:build": "node scripts/cf-build.mjs",
+    "cf:deploy": "node scripts/cf-build.mjs && opennextjs-cloudflare deploy",
+    "cf:secrets": "node scripts/cf-secrets.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^1.14.0",
     "ethers": "^6.13.4",
-    "next": "15.1.6",
+    "next": "^15.5.29",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
   },
   "devDependencies": {
+    "@opennextjs/cloudflare": "^1.20.18",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "postcss": "^8",
     "tailwindcss": "^3.4.1",
-    "typescript": "^5"
+    "typescript": "^5",
+    "wrangler": "^4.168.0"
+  },
+  "allowScripts": {
+    "esbuild@0.28.2": true,
+    "workerd@1.20261123.1": true
   }
 }

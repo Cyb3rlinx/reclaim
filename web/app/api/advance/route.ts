@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { isAddress, keccak256, parseEther, toUtf8Bytes, formatEther } from "ethers";
 import { checkReceipt, estimate, normalizedReceiptKey, type ReceiptData } from "@/lib/rules";
 import { thbToUsdRate } from "@/lib/fx";
+import { marketCheck, MAX_SOURCE_DEVIATION_PCT } from "@/lib/cmc";
 import { EXPLORER, chainError, isDeployed, vault, wallets } from "@/lib/chain";
 
 export const runtime = "nodejs";
@@ -11,6 +12,23 @@ async function quote(receipt: ReceiptData) {
   const checks = checkReceipt(receipt);
   const { vatThb, refundThb, deadline } = estimate(receipt);
   const fx = await thbToUsdRate();
+  // Second, independent source: CoinMarketCap. Atlas is still enforced on-chain by the vault;
+  // if CMC is unreachable the advance continues on Atlas alone and the UI says so.
+  const market = await marketCheck(fx.usdPerThb);
+  if (market.configured && !market.error) {
+    checks.push({
+      id: "sources",
+      label: "Price sources agree (Atlas vs CoinMarketCap)",
+      ok: !!market.sourcesAgree,
+      detail: `CMC ${market.cmcUsdPerThb!.toFixed(5)} vs Atlas ${fx.usdPerThb.toFixed(5)} USD/THB · ${market.deviationPct!.toFixed(2)}% apart (max ${MAX_SOURCE_DEVIATION_PCT}%)`,
+    });
+    checks.push({
+      id: "peg",
+      label: "Stablecoin holds its $1 peg",
+      ok: !!market.pegOk,
+      detail: `USDT = $${market.usdtUsd!.toFixed(4)} on CoinMarketCap`,
+    });
+  }
   const refundUsd = Math.floor(refundThb * fx.usdPerThb * 100) / 100;
   const terms = { advanceBps: 8000, feeBps: 500 };
   if (isDeployed()) {
@@ -28,6 +46,7 @@ async function quote(receipt: ReceiptData) {
     feeUsd: (refundUsd * terms.feeBps) / 10_000,
     deadline: deadline.toISOString(),
     fx,
+    market,
     receiptHash: keccak256(toUtf8Bytes(normalizedReceiptKey(receipt))),
   };
 }

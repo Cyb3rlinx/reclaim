@@ -13,6 +13,7 @@ type Quote = {
   feeUsd: number;
   deadline: string;
   fx: { usdPerThb: number; source: string };
+  market?: { configured: boolean; cmcUsdPerThb?: number; deviationPct?: number; error?: string };
   receiptHash: string;
   claimId?: number;
   txUrl?: string;
@@ -326,6 +327,14 @@ export default function Home() {
               <i className="inline-block h-1.5 w-1.5 rounded-full" style={{ background: "var(--accent)", boxShadow: "0 0 8px var(--accent)" }} />
               THB/USD {quote.fx.usdPerThb.toFixed(5)} · {quote.fx.source}
             </div>
+            {quote.market?.configured && (
+              <div className="mt-1 flex items-center gap-1.5 text-[11px]" style={{ color: quote.market.error ? "var(--muted)" : "#FFD400" }}>
+                <i className="inline-block h-1.5 w-1.5 rounded-full" style={{ background: quote.market.error ? "var(--muted)" : "var(--accent)" }} />
+                {quote.market.error
+                  ? "CoinMarketCap unavailable · priced on Atlas alone"
+                  : `Cross-checked with CoinMarketCap · ${quote.market.deviationPct!.toFixed(2)}% apart`}
+              </div>
+            )}
           </div>
 
           <details className="card text-sm">
