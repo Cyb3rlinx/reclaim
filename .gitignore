@@ -1,0 +1,10 @@
+node_modules/
+.env
+.env.local
+.env*.local
+contracts/cache/
+contracts/artifacts/
+web/.next/
+web/next-env.d.ts
+*.tsbuildinfo
+NOTAS-DX.md
