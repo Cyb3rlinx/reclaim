@@ -72,7 +72,7 @@ export default function Home() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   }, [stage]);
 
-  async function scan(demo: boolean) {
+  async function scan(demo: boolean, override?: File) {
     setBusy("scan");
     setError(null);
     setQuote(null);
@@ -81,7 +81,7 @@ export default function Home() {
     try {
       const fd = new FormData();
       if (demo) fd.set("demo", "1");
-      else if (file) fd.set("receipt", file);
+      else if (override ?? file) fd.set("receipt", (override ?? file)!);
       const r = await fetch("/api/parse", { method: "POST", body: fd });
       const j = await r.json();
       if (!r.ok) throw new Error(j.error);
@@ -94,6 +94,15 @@ export default function Home() {
     } finally {
       setBusy(null);
     }
+  }
+
+  // Loads the bundled sample P.P.10 photo (marked DEMO - NOT VALID) and has the AI agent read it for real.
+  async function scanSample() {
+    const blob = await (await fetch("/demo/pp10-demo.png")).blob();
+    const f = new File([blob], "pp10-demo.png", { type: "image/png" });
+    setFile(f);
+    setPreview(URL.createObjectURL(f));
+    await scan(false, f);
   }
 
   async function runQuote(r: ReceiptData) {
@@ -239,9 +248,14 @@ export default function Home() {
           <button className="btn btn-primary" disabled={!file || !!busy} onClick={() => scan(false)}>
             {busy === "scan" ? "Agent reading your receipt…" : "Read with AI agent"}
           </button>
-          <button className="btn btn-ghost" disabled={!!busy} onClick={() => scan(true)}>
-            Use demo receipt
-          </button>
+          <div className="grid grid-cols-2 gap-2">
+            <button className="btn btn-ghost" disabled={!!busy} onClick={scanSample}>
+              Sample P.P.10 photo
+            </button>
+            <button className="btn btn-ghost" disabled={!!busy} onClick={() => scan(true)}>
+              Use demo receipt
+            </button>
+          </div>
 
           <div className="grid grid-cols-3 gap-2">
             <Pill label="Advance" value="80%" gold />

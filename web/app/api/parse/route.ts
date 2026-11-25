@@ -22,20 +22,21 @@ const SCHEMA = {
   additionalProperties: false,
   required: ["storeName", "storeTaxId", "receiptNumber", "purchaseDate", "totalThb", "vatThb", "hasVatRefundForm", "items", "isReceipt", "notes"],
   properties: {
-    isReceipt: { type: "boolean", description: "false if the image is not a Thai sales receipt / tax invoice" },
+    isReceipt: { type: "boolean", description: "true for a Thai sales receipt / tax invoice or a filled P.P.10 VAT Refund Application for Tourist; false otherwise" },
     storeName: { type: "string" },
     storeTaxId: { type: "string", description: "13-digit Thai tax ID of the seller, digits only, empty if absent" },
-    receiptNumber: { type: "string", description: "Tax invoice / receipt number" },
-    purchaseDate: { type: "string", description: "YYYY-MM-DD, convert Buddhist Era years (e.g. 2569) to Gregorian" },
+    receiptNumber: { type: "string", description: "Tax invoice / receipt number (on a P.P.10: the first Tax Invoice No. in the items table)" },
+    purchaseDate: { type: "string", description: "YYYY-MM-DD purchase date (on a P.P.10: the retailer's signature date). Dates are written DD/MM/YYYY; convert Buddhist Era years (e.g. 2569) to Gregorian" },
     totalThb: { type: "number", description: "VAT-inclusive grand total in THB" },
-    vatThb: { type: "number", description: "VAT amount printed on the receipt, 0 if not printed" },
+    vatThb: { type: "number", description: "VAT amount printed (on a P.P.10: Total VAT, not Total VAT Refundable), 0 if not printed" },
     hasVatRefundForm: { type: "boolean", description: "true if a P.P.10 / VAT Refund for Tourists form or e-VRT mark is visible" },
     items: { type: "array", items: { type: "string" }, description: "Short names of purchased goods" },
     notes: { type: "string", description: "Anything unreadable or suspicious, empty if none" },
   },
 } as const;
 
-const SYSTEM = `You read Thai retail receipts and tax invoices for a VAT-refund service.
+const SYSTEM = `You read Thai retail receipts, tax invoices and P.P.10 "VAT Refund Application for Tourist" forms for a VAT-refund service.
+On a P.P.10, the retailer section has the seller tax ID, store name, the items table (tax invoice numbers, goods, VAT-included prices) and Total Payment / Total VAT.
 Extract only what is printed. Never invent a tax ID, receipt number or amount: use "" or 0 when absent.
 Thai receipts often use Buddhist Era years (add -543 to get Gregorian). Amounts are THB.
 Do not extract passport numbers or other personal identifiers.`;
