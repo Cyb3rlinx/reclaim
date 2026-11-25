@@ -171,11 +171,15 @@ export default function Home() {
   }
 
   return (
+    <>
+    <i className="arc" style={{ width: 520, height: 520, right: -430, top: -400 }} />
     <main className="mx-auto flex min-h-screen w-full max-w-[440px] flex-col gap-4 px-5 pb-12 pt-6">
       {/* Brand bar */}
       <header className="flex items-center justify-between">
-        <div className="flex items-center gap-2.5 text-[13px] font-extrabold tracking-[0.24em]">
-          <div className="mark">R</div>RECLAIM
+        <div className="flex items-center gap-2.5 text-[19px] font-bold tracking-tight">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/brand/mark.svg" alt="" className="mark" />
+          Reclaim
         </div>
         <span className="chip">{explorer?.includes("testnet") ? "BSC TESTNET" : "BNB CHAIN"}</span>
       </header>
@@ -288,7 +292,7 @@ export default function Home() {
           </ul>
 
           <div className="offer">
-            <div className="label" style={{ color: "#e8c766" }}>
+            <div className="label" style={{ color: "#FFD400" }}>
               {quote.eligible ? "Available now" : "Not eligible"}
             </div>
             <div className="big g mono mt-2">{usd(quote.advanceUsd)}</div>
@@ -303,14 +307,14 @@ export default function Home() {
                 Due <b style={{ color: "var(--ink)" }}>{fmtDate(quote.deadline)}</b>
               </span>
             </div>
-            <div className="mt-2.5 flex items-center gap-1.5 text-[11px]" style={{ color: "#e8c766" }}>
+            <div className="mt-2.5 flex items-center gap-1.5 text-[11px]" style={{ color: "#FFD400" }}>
               <i className="inline-block h-1.5 w-1.5 rounded-full" style={{ background: "var(--accent)", boxShadow: "0 0 8px var(--accent)" }} />
               THB/USD {quote.fx.usdPerThb.toFixed(5)} · {quote.fx.source}
             </div>
           </div>
 
           <details className="card text-sm">
-            <summary className="cursor-pointer font-semibold" style={{ color: "#e8c766" }}>
+            <summary className="cursor-pointer font-semibold" style={{ color: "#FFD400" }}>
               Edit receipt details &amp; wallet
             </summary>
             <div className="mt-3 space-y-2">
@@ -359,7 +363,7 @@ export default function Home() {
 
           <div className="nft">
             <div className="flex items-center justify-between">
-              <span className="label" style={{ color: "#e8c766" }}>
+              <span className="label" style={{ color: "#FFD400" }}>
                 Reclaim Receipt NFT
               </span>
               <span className="chip">{claim.status.toUpperCase()}</span>
@@ -421,6 +425,7 @@ export default function Home() {
         )}
       </footer>
     </main>
+    </>
   );
 }
 

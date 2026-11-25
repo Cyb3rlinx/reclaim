@@ -9,7 +9,7 @@ export const metadata: Metadata = {
   description: "An AI agent on BNB Chain that turns a Thai tourist VAT receipt into an on-chain claim and advances the refund instantly.",
 };
 
-export const viewport: Viewport = { themeColor: "#070707", width: "device-width", initialScale: 1 };
+export const viewport: Viewport = { themeColor: "#0B0B0B", width: "device-width", initialScale: 1 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
