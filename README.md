@@ -29,6 +29,8 @@ tourist gets 80% now ◄── ReclaimVault (ERC-4626 pool) ◄─────�
 - Lenders can only withdraw idle cash, never money that is currently lent out.
 - Per-claim cap and configurable advance/fee terms (`advance + fee ≤ 100%`).
 
+**Sponsor integration:** every advance is priced with the Atlas Oracle THB/USD feed on BSC — see [ATLAS-INTEGRATION.md](ATLAS-INTEGRATION.md).
+
 ## Live on BNB Smart Chain testnet (chainId 97)
 
 | Contract | Address |
