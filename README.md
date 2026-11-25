@@ -21,6 +21,7 @@ tourist gets 80% now ◄── ReclaimVault (ERC-4626 pool) ◄─────�
 | `ReclaimVault` | ERC-4626 liquidity pool. Lenders deposit stablecoins and receive pool shares. `issueAdvance` (agent only) pays the tourist and records the claim; `attestRefund` (oracle only) stores the evidence; `repay` closes the claim; `markDefault` writes off unpaid claims after the deadline + 7 days. |
 | `ReclaimReceipt` | ERC-721. One token per verified receipt: the tokenized refund right. Only the vault can mint. |
 | `MockUSD` | Testnet stablecoin standing in for lisUSD / USDT. |
+| Atlas Oracle feed (external) | THB/USD price used to size every advance (`web/lib/fx.ts`). |
 
 **Safety rules in the contract**
 - The same receipt can never be financed twice (`claimIdByReceipt`, keyed by a hash of tax ID + receipt number + date + total).
@@ -84,7 +85,7 @@ The deployer wallet needs a little tBNB for gas. The script seeds the pool and f
 ## Status and honest limits
 
 - Testnet prototype. The oracle attestation and the airport refund are **simulated** in the demo.
-- The THB→USD rate comes from a public FX API; an Atlas price feed is being integrated.
+- The THB→USD rate is read on-chain from the **Atlas Oracle THB/USD feed on BSC testnet** (`0x9f9cb4f972edd5bd59ca045f10821d8a2588bf4e`, 18 decimals, AggregatorV3 interface). If the feed is unreachable or older than 7 days, the app falls back to a public FX API and labels the source in the UI.
 - Not financial advice. No token is issued by this project.
 
 ## Repo layout
