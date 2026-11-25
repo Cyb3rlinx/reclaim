@@ -93,7 +93,7 @@ The deployer wallet needs a little tBNB for gas. The script seeds the pool and f
 - **Revenue:** a 5% fee on each advance, paid when the tourist repays. It goes to liquidity providers, and a protocol share can be added later.
 - **Market:** tens of millions of foreign visitors a year shop in Thailand, and the same tax-free scheme exists across the EU, Japan, Korea and Singapore.
 - **Path:** partner with VAT-refund operators and stores (point-of-sale integration), use real stablecoin liquidity (e.g. Lista DAO lisUSD lending), and add an AI resolution oracle that reads the airport refund record.
-- **Risk controls:** advance only 80% of a conservative estimate, cap each claim, block duplicate receipts, and hold a card pre-authorization as collateral in production (as downtown refund services already do).
+- **Risk controls:** advance only 80% of a conservative estimate, cap each claim, block duplicate receipts, and hold a card pre-authorization for the **full amount owed (advance + the 5% lender fee)** as collateral in production, as downtown refund services already do, so a defaulting tourist is charged the lenders’ fee too, not just the principal.
 
 ## Status and honest limits
 
