@@ -1,7 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import type { Check, ReceiptData } from "@/lib/rules";
+import { MIN_PER_RECEIPT_THB, NET_REFUND_RATIO, vatFromTotal, type Check, type ReceiptData } from "@/lib/rules";
+import { CURRENCIES, type Currency, type LocalRate, type Pegs, type Stablecoin } from "@/lib/market";
 
 type Quote = {
   checks: Check[];
@@ -14,6 +15,8 @@ type Quote = {
   deadline: string;
   fx: { usdPerThb: number; source: string };
   market?: { configured: boolean; cmcUsdPerThb?: number; deviationPct?: number; error?: string };
+  payout?: Stablecoin;
+  pegs?: Pegs;
   receiptHash: string;
   claimId?: number;
   txUrl?: string;
@@ -42,6 +45,32 @@ type ChainState = {
 
 const thb = (n: number) => `฿${n.toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
 const usd = (n: number | string) => `$${Number(n).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+type Market = { fx: { usdPerThb: number; source: string }; local: LocalRate | null; pegs: Pegs };
+
+// Guess the tourist's home currency from the phone's language/region (they can change it).
+const REGION_CURRENCY: Record<string, Currency> = {
+  US: "USD", GB: "GBP", CN: "CNY", HK: "USD", JP: "JPY", KR: "KRW", IN: "INR", AU: "AUD", SG: "SGD", MY: "MYR",
+  RU: "RUB", AE: "AED", CA: "CAD", CH: "CHF", AR: "ARS", BR: "BRL", MX: "MXN", CL: "CLP", CO: "COP",
+  DE: "EUR", FR: "EUR", ES: "EUR", IT: "EUR", NL: "EUR", PT: "EUR", IE: "EUR", AT: "EUR", BE: "EUR", FI: "EUR", GR: "EUR",
+};
+function detectCurrency(): Currency {
+  try {
+    const saved = localStorage.getItem("reclaim.currency");
+    if (saved && (CURRENCIES as readonly string[]).includes(saved)) return saved as Currency;
+  } catch {}
+  for (const lang of navigator.languages ?? [navigator.language]) {
+    const region = lang.split("-")[1]?.toUpperCase();
+    if (region && REGION_CURRENCY[region]) return REGION_CURRENCY[region];
+  }
+  return "USD";
+}
+function money(n: number, cur: string) {
+  try {
+    return new Intl.NumberFormat(undefined, { style: "currency", currency: cur, maximumFractionDigits: n >= 1000 ? 0 : 2 }).format(n);
+  } catch {
+    return `${n.toFixed(2)} ${cur}`;
+  }
+}
 const short = (a?: string | null) => (a ? `${a.slice(0, 6)}…${a.slice(-4)}` : "");
 
 export default function Home() {
@@ -57,6 +86,26 @@ export default function Home() {
   const [chain, setChain] = useState<ChainState | null>(null);
   const [claimId, setClaimId] = useState<number | null>(null);
   const [txs, setTxs] = useState<{ label: string; url: string }[]>([]);
+  const [currency, setCurrency] = useState<Currency>("USD");
+  const [market, setMarket] = useState<Market | null>(null);
+  const [payout, setPayout] = useState<Stablecoin | null>(null);
+
+  useEffect(() => setCurrency(detectCurrency()), []);
+  useEffect(() => {
+    try {
+      localStorage.setItem("reclaim.currency", currency);
+    } catch {}
+    fetch(`/api/market?currency=${currency}`, { cache: "no-store" })
+      .then((r) => r.json())
+      .then(setMarket)
+      .catch(() => {});
+  }, [currency]);
+
+  // USD amount -> tourist's currency (via THB: Atlas for USD/THB, CoinMarketCap for THB/local).
+  const toLocal = (amountUsd: number) => {
+    if (currency === "USD" || !market?.local || !(market.fx.usdPerThb > 0)) return null;
+    return money((amountUsd / market.fx.usdPerThb) * market.local.perThb, currency);
+  };
 
   const refresh = useCallback(async (id = claimId) => {
     const r = await fetch(`/api/state${id ? `?claim=${id}` : ""}`, { cache: "no-store" });
@@ -106,8 +155,12 @@ export default function Home() {
     await scan(false, f);
   }
 
-  async function runQuote(r: ReceiptData) {
-    const res = await fetch("/api/advance", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ receipt: r }) });
+  async function runQuote(r: ReceiptData, coin = payout) {
+    const res = await fetch("/api/advance", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ receipt: r, payout: coin ?? undefined }),
+    });
     setQuote(await res.json());
   }
 
@@ -119,7 +172,7 @@ export default function Home() {
       const r = await fetch("/api/advance", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ receipt, tourist: tourist.trim() || undefined, execute: true }),
+        body: JSON.stringify({ receipt, tourist: tourist.trim() || undefined, execute: true, payout: quote?.payout }),
       });
       const j: Quote = await r.json();
       setQuote(j);
@@ -192,7 +245,21 @@ export default function Home() {
           <img src="/brand/mark.svg" alt="" className="mark" />
           Reclaim
         </div>
-        <span className="chip">{explorer?.includes("testnet") ? "BSC TESTNET" : "BNB CHAIN"}</span>
+        <div className="flex items-center gap-2">
+          <select
+            aria-label="Your currency"
+            className="chip chip-select"
+            value={currency}
+            onChange={(e) => setCurrency(e.target.value as Currency)}
+          >
+            {CURRENCIES.map((c) => (
+              <option key={c} value={c}>
+                {c}
+              </option>
+            ))}
+          </select>
+          <span className="chip">{explorer?.includes("testnet") ? "TESTNET" : "BNB CHAIN"}</span>
+        </div>
       </header>
 
       {error && (
@@ -258,6 +325,8 @@ export default function Home() {
             </button>
           </div>
 
+          <Calculator market={market} currency={currency} />
+
           <div className="grid grid-cols-3 gap-2">
             <Pill label="Advance" value="80%" gold />
             <Pill label="Fee" value="5%" />
@@ -312,6 +381,11 @@ export default function Home() {
               {quote.eligible ? "Available now" : "Not eligible"}
             </div>
             <div className="big g mono mt-2">{usd(quote.advanceUsd)}</div>
+            {toLocal(quote.advanceUsd) && (
+              <div className="mt-1.5 text-[13px] font-semibold" style={{ color: "var(--ink)" }}>
+                ≈ {toLocal(quote.advanceUsd)} <span className="muted text-[11px] font-normal">in your currency · {market?.local?.source}</span>
+              </div>
+            )}
             <div className="muted mt-3 flex justify-between gap-2 text-[11.5px]">
               <span>
                 Est. refund <b className="mono" style={{ color: "var(--ink)" }}>{usd(quote.refundUsd)}</b>
@@ -336,6 +410,40 @@ export default function Home() {
               </div>
             )}
           </div>
+
+          {quote.pegs && quote.pegs.coins.length > 0 && (
+            <div className="card">
+              <div className="flex items-center justify-between">
+                <span className="label">Get paid in</span>
+                <span className="muted text-[10.5px]">peg · {quote.pegs.source}</span>
+              </div>
+              <div className="mt-2.5 grid grid-cols-3 gap-2">
+                {quote.pegs.coins.map((c) => {
+                  const on = quote.payout === c.symbol;
+                  return (
+                    <button
+                      key={c.symbol}
+                      disabled={!!busy || !c.ok}
+                      onClick={() => {
+                        setPayout(c.symbol);
+                        runQuote(receipt, c.symbol);
+                      }}
+                      className={`coin ${on ? "on" : ""}`}
+                    >
+                      <span className="text-[14px] font-bold">{c.symbol}</span>
+                      <span className="mono text-[11px]" style={{ color: c.ok ? "var(--ok)" : "var(--bad)" }}>
+                        ${c.price.toFixed(4)}
+                      </span>
+                      {quote.pegs!.recommended === c.symbol && <span className="tag">BEST PEG</span>}
+                    </button>
+                  );
+                })}
+              </div>
+              <p className="muted mt-2 text-[10.5px] leading-snug">
+                The agent recommends the coin closest to $1 and refuses any coin outside $0.98–$1.02. Testnet pays a test stablecoin.
+              </p>
+            </div>
+          )}
 
           <details className="card text-sm">
             <summary className="cursor-pointer font-semibold" style={{ color: "#FFD400" }}>
@@ -363,7 +471,7 @@ export default function Home() {
           </details>
 
           <button className="btn btn-primary" disabled={!quote.eligible || !!busy || !chain?.deployed} onClick={advance}>
-            {busy === "advance" ? "Minting claim & paying…" : `Get ${usd(quote.advanceUsd)} now`}
+            {busy === "advance" ? "Minting claim & paying…" : `Get ${usd(quote.advanceUsd)} in ${quote.payout ?? "USDT"} now`}
           </button>
           {!chain?.deployed && <p className="muted text-center text-xs">Contracts not deployed yet — advance is disabled.</p>}
         </>
@@ -380,8 +488,11 @@ export default function Home() {
             </div>
             <div className="label mt-2">{settled ? "Claim settled" : "Sent to your wallet"}</div>
             <div className="big g mono">{usd(quote.advanceUsd)}</div>
+            {toLocal(quote.advanceUsd) && <div className="text-[13px] font-semibold">≈ {toLocal(quote.advanceUsd)}</div>}
             <div className="muted text-[12.5px]">
-              {settled ? "The pool earned the fee. You never waited for the airport." : `Paid on BNB Chain to ${short(claim.tourist)}`}
+              {settled
+                ? "The pool earned the fee. You never waited for the airport."
+                : `Paid in ${quote.payout ?? "USDT"} on BNB Chain to ${short(claim.tourist)}`}
             </div>
           </div>
 
@@ -434,6 +545,7 @@ export default function Home() {
               </button>
             </>
           )}
+          {!settled && <FlightCard deadline={quote.deadline} />}
           {settled && (
             <button className="btn btn-ghost" onClick={reset}>
               Scan another receipt
@@ -480,6 +592,138 @@ function Step({ state, title, desc }: { state: "done" | "next" | "todo"; title: 
         <div className="tt text-[13px] font-semibold">{title}</div>
         {desc && <div className="muted mt-0.5 text-[11.5px]">{desc}</div>}
       </div>
+    </div>
+  );
+}
+
+function Calculator({ market, currency }: { market: Market | null; currency: Currency }) {
+  const [price, setPrice] = useState("25000");
+  const total = Number(price) || 0;
+  const refundThb = Math.floor(vatFromTotal(total) * NET_REFUND_RATIO * 100) / 100;
+  const advanceThb = refundThb * 0.8;
+  const fmt = (thbAmount: number) => {
+    if (!market) return "…";
+    if (currency !== "USD" && market.local) return money(thbAmount * market.local.perThb, currency);
+    return money(thbAmount * market.fx.usdPerThb, "USD");
+  };
+  const under = total > 0 && total < MIN_PER_RECEIPT_THB;
+  return (
+    <div className="card">
+      <div className="label">Before you buy · refund calculator</div>
+      <label className="mt-2.5 flex items-center gap-2">
+        <span className="text-lg font-bold" style={{ color: "#FFD400" }}>
+          ฿
+        </span>
+        <input
+          className="field mono text-lg font-bold"
+          inputMode="decimal"
+          aria-label="Price in Thai baht"
+          value={price}
+          onChange={(e) => setPrice(e.target.value.replace(/[^\d.]/g, ""))}
+        />
+      </label>
+      {under ? (
+        <p className="mt-2 text-[12px]" style={{ color: "var(--bad)" }}>
+          Below the ฿{MIN_PER_RECEIPT_THB.toLocaleString()} minimum per receipt: no VAT refund.
+        </p>
+      ) : (
+        <div className="mt-3 grid grid-cols-2 gap-3">
+          <div>
+            <div className="muted text-[11px]">Refund at the airport</div>
+            <div className="mono text-[15px] font-bold">{fmt(refundThb)}</div>
+            <div className="muted mono text-[10.5px]">{thb(refundThb)}</div>
+          </div>
+          <div>
+            <div className="muted text-[11px]">Reclaim pays you today</div>
+            <div className="g mono text-[15px] font-extrabold">{fmt(advanceThb)}</div>
+            <div className="muted mono text-[10.5px]">80% · {thb(advanceThb)}</div>
+          </div>
+        </div>
+      )}
+      <p className="muted mt-2 text-[10.5px]">
+        {currency !== "USD" && market?.local ? `${currency} via ${market.local.source}` : `USD via ${market?.fx.source ?? "Atlas"}`} · estimate after
+        operator fees
+      </p>
+    </div>
+  );
+}
+
+// The airport is the tourist's last step: count down to the flight and tell them exactly what to do.
+function FlightCard({ deadline }: { deadline: string }) {
+  const [flight, setFlight] = useState("");
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    try {
+      setFlight(localStorage.getItem("reclaim.flight") ?? "");
+    } catch {}
+    const t = setInterval(() => setNow(Date.now()), 30_000);
+    return () => clearInterval(t);
+  }, []);
+  function save(v: string) {
+    setFlight(v);
+    try {
+      localStorage.setItem("reclaim.flight", v);
+    } catch {}
+  }
+  const end = new Date(deadline).getTime();
+  const fl = flight ? new Date(flight).getTime() : NaN;
+  const target = Number.isNaN(fl) ? end : fl;
+  const ms = Math.max(0, target - now);
+  const d = Math.floor(ms / 86_400_000);
+  const h = Math.floor((ms % 86_400_000) / 3_600_000);
+  const m = Math.floor((ms % 3_600_000) / 60_000);
+  const late = !Number.isNaN(fl) && fl > end;
+
+  function addToCalendar() {
+    const start = new Date((Number.isNaN(fl) ? end : fl) - 3 * 3_600_000);
+    const stamp = (x: Date) => x.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "");
+    const ics = [
+      "BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//Reclaim//EN", "BEGIN:VEVENT",
+      `UID:${start.getTime()}@reclaim`, `DTSTAMP:${stamp(new Date())}`, `DTSTART:${stamp(start)}`,
+      `DTEND:${stamp(new Date(start.getTime() + 3_600_000))}`,
+      "SUMMARY:VAT refund at the airport (Reclaim)",
+      "DESCRIPTION:Bring your goods + P.P.10 to Customs (VAT Refund for Tourists) BEFORE check-in. Collect the refund after passport control.",
+      "BEGIN:VALARM", "TRIGGER:-PT2H", "ACTION:DISPLAY", "DESCRIPTION:VAT refund at the airport", "END:VALARM",
+      "END:VEVENT", "END:VCALENDAR",
+    ].join("\r\n");
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(new Blob([ics], { type: "text/calendar" }));
+    a.download = "reclaim-airport.ics";
+    a.click();
+  }
+
+  return (
+    <div className="card">
+      <div className="flex items-center justify-between">
+        <span className="label">✈ Airport countdown</span>
+        <span className="chip">{Number.isNaN(fl) ? "REFUND WINDOW" : "YOUR FLIGHT"}</span>
+      </div>
+      <div className="mono mt-2 flex items-baseline gap-3">
+        <span className="g text-[34px] font-extrabold leading-none">{d}</span>
+        <span className="muted text-xs">days</span>
+        <span className="text-[22px] font-bold leading-none">{h}</span>
+        <span className="muted text-xs">h</span>
+        <span className="text-[22px] font-bold leading-none">{m}</span>
+        <span className="muted text-xs">min</span>
+      </div>
+      <label className="mt-3 block">
+        <span className="muted text-xs">Flight departure</span>
+        <input className="field mt-1" type="datetime-local" value={flight} onChange={(e) => save(e.target.value)} />
+      </label>
+      {late && (
+        <p className="mt-2 text-[12px]" style={{ color: "var(--bad)" }}>
+          Your flight is after the refund window ({fmtDate(deadline)}). Goods must leave Thailand by then.
+        </p>
+      )}
+      <ol className="mt-3 grid gap-2 text-[12.5px]">
+        <li><b style={{ color: "#FFD400" }}>1.</b> Arrive 3 hours early.</li>
+        <li><b style={{ color: "#FFD400" }}>2.</b> <b>Before check-in</b>: show the goods + P.P.10 at the &ldquo;VAT Refund for Tourists&rdquo; Customs desk.</li>
+        <li><b style={{ color: "#FFD400" }}>3.</b> Keep jewelry, watches and other high-value items in your hand luggage: they may be checked again.</li>
+        <li><b style={{ color: "#FFD400" }}>4.</b> <b>After passport control</b>: collect the refund. It repays Reclaim and closes your claim.</li>
+      </ol>
+      <button className="btn btn-ghost mt-3" onClick={addToCalendar}>
+        Add reminder to my calendar
+      </button>
     </div>
   );
 }

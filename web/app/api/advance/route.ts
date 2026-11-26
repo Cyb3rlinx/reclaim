@@ -3,12 +3,13 @@ import { isAddress, keccak256, parseEther, toUtf8Bytes, formatEther } from "ethe
 import { checkReceipt, estimate, normalizedReceiptKey, type ReceiptData } from "@/lib/rules";
 import { thbToUsdRate } from "@/lib/fx";
 import { marketCheck, MAX_SOURCE_DEVIATION_PCT } from "@/lib/cmc";
+import { STABLECOINS, stablecoinPegs, type Stablecoin } from "@/lib/market";
 import { EXPLORER, chainError, isDeployed, vault, wallets } from "@/lib/chain";
 
 export const runtime = "nodejs";
 
 /** Quote: run the agent's checks and price the advance without touching the chain. */
-async function quote(receipt: ReceiptData) {
+async function quote(receipt: ReceiptData, payoutReq?: string) {
   const checks = checkReceipt(receipt);
   const { vatThb, refundThb, deadline } = estimate(receipt);
   const fx = await thbToUsdRate();
@@ -22,11 +23,18 @@ async function quote(receipt: ReceiptData) {
       ok: !!market.sourcesAgree,
       detail: `CMC ${market.cmcUsdPerThb!.toFixed(5)} vs Atlas ${fx.usdPerThb.toFixed(5)} USD/THB · ${market.deviationPct!.toFixed(2)}% apart (max ${MAX_SOURCE_DEVIATION_PCT}%)`,
     });
+  }
+  // The tourist picks the stablecoin; the agent refuses to pay in one that has lost its $1 peg.
+  const pegs = await stablecoinPegs();
+  const payout: Stablecoin =
+    payoutReq && (STABLECOINS as readonly string[]).includes(payoutReq) ? (payoutReq as Stablecoin) : (pegs.recommended ?? "USDT");
+  const peg = pegs.coins.find((c) => c.symbol === payout);
+  if (peg) {
     checks.push({
       id: "peg",
-      label: "Stablecoin holds its $1 peg",
-      ok: !!market.pegOk,
-      detail: `USDT = $${market.usdtUsd!.toFixed(4)} on CoinMarketCap`,
+      label: `${payout} holds its $1 peg`,
+      ok: peg.ok,
+      detail: `${payout} = $${peg.price.toFixed(4)} on ${pegs.source} · must stay within $0.98–$1.02`,
     });
   }
   const refundUsd = Math.floor(refundThb * fx.usdPerThb * 100) / 100;
@@ -47,13 +55,15 @@ async function quote(receipt: ReceiptData) {
     deadline: deadline.toISOString(),
     fx,
     market,
+    payout,
+    pegs,
     receiptHash: keccak256(toUtf8Bytes(normalizedReceiptKey(receipt))),
   };
 }
 
 export async function POST(req: Request) {
-  const body = (await req.json()) as { receipt: ReceiptData; tourist?: string; execute?: boolean };
-  const q = await quote(body.receipt);
+  const body = (await req.json()) as { receipt: ReceiptData; tourist?: string; execute?: boolean; payout?: string };
+  const q = await quote(body.receipt, body.payout);
   if (!body.execute) return NextResponse.json(q);
 
   if (!q.eligible) return NextResponse.json({ ...q, error: "Receipt failed the agent's checks." }, { status: 422 });
