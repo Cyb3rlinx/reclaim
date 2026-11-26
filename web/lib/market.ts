@@ -103,6 +103,8 @@ async function pegsFromGecko(): Promise<Pegs | null> {
   try {
     const ids = STABLECOINS.map((s) => GECKO_IDS[s]).join(",");
     const res = await fetch(`https://api.coingecko.com/api/v3/simple/price?ids=${ids}&vs_currencies=usd`, {
+      // CoinGecko answers 403 to requests without a User-Agent (Cloudflare Workers send none).
+      headers: { "User-Agent": "reclaim-demo/1.0", Accept: "application/json" },
       cache: "no-store",
       signal: AbortSignal.timeout(4000),
     });
@@ -116,9 +118,25 @@ async function pegsFromGecko(): Promise<Pegs | null> {
   }
 }
 
+// Last resort: Kraken's public ticker (USDT and USDC only; it does not list FDUSD).
+async function pegsFromKraken(): Promise<Pegs | null> {
+  try {
+    const res = await fetch("https://api.kraken.com/0/public/Ticker?pair=USDTUSD,USDCUSD", {
+      headers: { "User-Agent": "reclaim-demo/1.0" },
+      cache: "no-store",
+      signal: AbortSignal.timeout(4000),
+    });
+    const r = (await res.json())?.result ?? {};
+    const pegs = buildPegs({ USDT: Number(r.USDTZUSD?.c?.[0]), USDC: Number(r.USDCUSD?.c?.[0]) }, "Kraken");
+    return pegs.coins.length ? pegs : null;
+  } catch {
+    return null;
+  }
+}
+
 export async function stablecoinPegs(): Promise<Pegs> {
   if (pegCache && Date.now() - pegCache.at < 60_000) return pegCache.pegs;
-  const pegs = (hasCmc() ? await pegsFromCmc() : null) ?? (await pegsFromGecko());
+  const pegs = (hasCmc() ? await pegsFromCmc() : null) ?? (await pegsFromGecko()) ?? (await pegsFromKraken());
   if (pegs) {
     pegCache = { at: Date.now(), pegs };
     return pegs;
