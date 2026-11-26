@@ -179,13 +179,14 @@ export default function Home() {
         body: JSON.stringify({ receipt, tourist: tourist.trim() || undefined, execute: true, payout: quote?.payout }),
       });
       const j: Quote = await r.json();
+      // A rejected advance (e.g. a duplicate receipt) stays on this screen so its reason is visible.
+      if (!r.ok) throw new Error(j.error);
       setQuote(j);
       if (j.claimId) {
         setClaimId(j.claimId);
         await refresh(j.claimId);
       }
       if (j.txUrl) setTxs((t) => [...t, { label: "Advance paid + receipt NFT minted", url: j.txUrl! }]);
-      if (!r.ok) throw new Error(j.error);
     } catch (e) {
       setError((e as Error).message);
     } finally {

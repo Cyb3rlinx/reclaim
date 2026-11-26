@@ -33,7 +33,7 @@ tourist gets 80% now ◄── ReclaimVault (ERC-4626 pool) ◄─────�
 **Live app (Cloudflare Workers, BSC testnet):** https://reclaim.interactive-archetype-journey.workers.dev
 - Event QR poster: https://reclaim.interactive-archetype-journey.workers.dev/poster · UI board: https://reclaim.interactive-archetype-journey.workers.dev/mockup.html
 
-**Demo video (1:37, real AI read + live BSC testnet transactions):** [launch/reclaim-demo.mp4](launch/reclaim-demo.mp4)
+**Demo video (2:02, real AI read + Atlas + CoinMarketCap + live BSC testnet transactions):** [launch/reclaim-demo.mp4](launch/reclaim-demo.mp4)
 
 **Sponsor integration:** every advance is priced with the Atlas Oracle THB/USD feed on BSC (enforced on-chain) and cross-checked live with the **CoinMarketCap Pro API** (`/v2/tools/price-conversion` for THB→USD and the tourist's currency, `/v1/cryptocurrency/quotes/latest` for the USDT/USDC/FDUSD peg check) — see [ATLAS-INTEGRATION.md](ATLAS-INTEGRATION.md) ([PDF](ATLAS-INTEGRATION.pdf)). The CMC key is a server-side Cloudflare secret (`CMC_API_KEY`); without it the app falls back to public sources and labels them in the UI.
 
