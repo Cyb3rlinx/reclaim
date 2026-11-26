@@ -122,7 +122,7 @@ export default function Home() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   }, [stage]);
 
-  async function scan(demo: boolean, override?: File) {
+  async function scan(demo: boolean, override?: File, shared = false) {
     setBusy("scan");
     setError(null);
     setQuote(null);
@@ -132,6 +132,7 @@ export default function Home() {
       const fd = new FormData();
       if (demo) fd.set("demo", "1");
       else if (override ?? file) fd.set("receipt", (override ?? file)!);
+      if (shared) fd.set("sample", "1");
       const r = await fetch("/api/parse", { method: "POST", body: fd });
       const j = await r.json();
       if (!r.ok) throw new Error(j.error);
@@ -152,7 +153,7 @@ export default function Home() {
     const f = new File([blob], "pp10-demo.png", { type: "image/png" });
     setFile(f);
     setPreview(URL.createObjectURL(f));
-    await scan(false, f);
+    await scan(false, f, true);
   }
 
   async function runQuote(r: ReceiptData, coin = payout) {

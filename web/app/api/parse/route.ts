@@ -45,6 +45,9 @@ export async function POST(req: Request) {
   const form = await req.formData();
   const file = form.get("receipt");
   const wantDemo = form.get("demo") === "1";
+  // The bundled sample P.P.10 is shared by everyone who scans the event QR: after the AI reads it,
+  // give this copy its own number so each visitor can finish the flow (the duplicate guard stays on).
+  const isSharedSample = form.get("sample") === "1";
 
   if (wantDemo || !(file instanceof File)) {
     return NextResponse.json({ demo: true, receipt: sample(), notes: "Demo sample — no image was read." });
@@ -94,6 +97,9 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "That image does not look like a receipt." }, { status: 422 });
     }
     const { isReceipt: _ignored, notes, ...receipt } = parsed;
+    if (isSharedSample && receipt.receiptNumber) {
+      receipt.receiptNumber = `${receipt.receiptNumber}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`;
+    }
     return NextResponse.json({ demo: false, receipt, notes, model: response.model });
   } catch (e) {
     if (e instanceof Anthropic.AuthenticationError) {

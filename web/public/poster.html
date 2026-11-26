@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Reclaim · Scan to try</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@500;600;700;800&display=swap" rel="stylesheet" />
+<style>
+  :root { --bg: #0B0B0B; --ink: #F5F5F5; --muted: #8E8A80; --gold: linear-gradient(135deg, #FFE45C 0%, #FFD400 38%, #F4B400 100%); }
+  * { box-sizing: border-box; margin: 0; }
+  html, body { background: var(--bg); color: var(--ink); font-family: Montserrat, Helvetica, Arial, sans-serif; }
+  body { min-height: 100vh; display: grid; place-items: center; padding: 28px 16px; overflow-x: hidden; position: relative; }
+  .arc { position: fixed; border-radius: 50%; border: 2px solid rgba(255, 212, 0, .7); filter: drop-shadow(0 0 12px rgba(255, 212, 0, .8)); pointer-events: none; }
+  .wrap { width: 100%; max-width: 520px; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 22px; position: relative; }
+  .brand { display: flex; align-items: center; gap: 12px; font-size: 30px; font-weight: 800; letter-spacing: -.02em; }
+  .brand img { height: 40px; filter: drop-shadow(0 0 14px rgba(255, 212, 0, .45)); }
+  h1 { font-size: clamp(34px, 8vw, 52px); font-weight: 800; line-height: 1.04; letter-spacing: -.03em; }
+  .g { background: linear-gradient(120deg, #FFF0A0 0%, #FFD400 40%, #F4B400 100%); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .sub { color: var(--muted); font-size: 16px; line-height: 1.5; max-width: 420px; }
+  .qr { position: relative; width: min(78vw, 360px); aspect-ratio: 1; border-radius: 28px; padding: 14px; background: var(--gold);
+        box-shadow: 0 0 0 10px rgba(255, 212, 0, .08), 0 20px 70px rgba(255, 212, 0, .35); }
+  .qr img.code { width: 100%; height: 100%; display: block; border-radius: 14px; }
+  .qr .badge { position: absolute; left: 50%; top: 50%; width: 21%; aspect-ratio: 1; transform: translate(-50%, -50%); border-radius: 22%;
+               background: #0B0B0B; display: grid; place-items: center; border: 4px solid #FFD400; }
+  .qr .badge img { width: 62%; }
+  .cta { font-size: 13px; font-weight: 700; letter-spacing: .22em; text-transform: uppercase; color: #FFD400; }
+  .url { font-size: 13px; color: var(--muted); word-break: break-all; }
+  ol { list-style: none; padding: 0; display: grid; gap: 10px; width: 100%; text-align: left; }
+  li { display: flex; gap: 12px; align-items: center; padding: 12px 14px; border-radius: 16px; border: 1px solid rgba(255, 212, 0, .16);
+       background: linear-gradient(160deg, rgba(255,255,255,.06), rgba(255,255,255,.015)); font-size: 14.5px; }
+  li b.n { flex: none; width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; background: var(--gold); color: #140e00; font-size: 13px; }
+  .foot { color: var(--muted); font-size: 11.5px; letter-spacing: .08em; }
+  @media print { .arc { display: none; } body { padding: 0; } }
+</style>
+</head>
+<body>
+  <i class="arc" style="width:620px;height:620px;right:-480px;top:-430px"></i>
+  <i class="arc" style="width:520px;height:520px;left:-430px;bottom:-400px"></i>
+  <main class="wrap">
+    <div class="brand"><img src="/brand/mark.svg" alt="" />Reclaim</div>
+    <h1>Your Thai VAT refund,<br /><span class="g">today.</span></h1>
+    <p class="sub">An AI agent on BNB Chain reads your tax-free receipt and pays you 80% of the refund in seconds. No airport queue.</p>
+    <div class="qr">
+      <img class="code" src="/qr.svg" alt="QR code to open Reclaim" />
+      <div class="badge"><img src="/brand/mark.svg" alt="" /></div>
+    </div>
+    <div class="cta">Scan with your phone camera</div>
+    <div class="url">reclaim.interactive-archetype-journey.workers.dev</div>
+    <ol>
+      <li><b class="n">1</b><span>Tap <b>Sample P.P.10 photo</b>: the AI reads it live</span></li>
+      <li><b class="n">2</b>Pick your coin and get paid on BNB testnet</li>
+      <li><b class="n">3</b>Simulate the airport refund and repay</li>
+    </ol>
+    <div class="foot">BNB CHAIN · PRICED BY ATLAS · CROSS-CHECKED WITH COINMARKETCAP · TESTNET DEMO</div>
+  </main>
+</body>
+</html>
