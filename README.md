@@ -31,6 +31,7 @@ tourist gets 80% now ◄── ReclaimVault (ERC-4626 pool) ◄─────�
 - **On-chain price check:** every advance is re-priced with the Atlas Oracle THB/USD feed. The agent states the refund in THB and in USD; the vault rejects it if they differ by more than 1% (`PriceMismatch`), if the feed is older than 7 days (`StalePrice`) or if the price is invalid. A compromised agent server cannot over-advance.
 
 **Live app (Cloudflare Workers, BSC testnet):** https://reclaim.interactive-archetype-journey.workers.dev
+- Event QR poster: https://reclaim.interactive-archetype-journey.workers.dev/poster · UI board: https://reclaim.interactive-archetype-journey.workers.dev/mockup.html
 
 **Demo video (1:37, real AI read + live BSC testnet transactions):** [launch/reclaim-demo.mp4](launch/reclaim-demo.mp4)
 
