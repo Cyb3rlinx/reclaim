@@ -89,6 +89,8 @@ export default function Home() {
   const [currency, setCurrency] = useState<Currency>("USD");
   const [market, setMarket] = useState<Market | null>(null);
   const [payout, setPayout] = useState<Stablecoin | null>(null);
+  // Card guarantee: SIMULATED in this testnet demo (no card data is ever asked for or stored).
+  const [holdOk, setHoldOk] = useState(false);
 
   useEffect(() => setCurrency(detectCurrency()), []);
   useEffect(() => {
@@ -128,6 +130,7 @@ export default function Home() {
     setQuote(null);
     setClaimId(null);
     setTxs([]);
+    setHoldOk(false);
     try {
       const fd = new FormData();
       if (demo) fd.set("demo", "1");
@@ -225,6 +228,7 @@ export default function Home() {
   const txRepay = txs.find((t) => t.label.startsWith("Advance +"));
 
   function reset() {
+    setHoldOk(false);
     setQuote(null);
     setReceipt(null);
     setClaimId(null);
@@ -471,7 +475,27 @@ export default function Home() {
             </div>
           </details>
 
-          <button className="btn btn-primary" disabled={!quote.eligible || !!busy || !chain?.deployed} onClick={advance}>
+          {quote.eligible && (
+            <label className={`card hold ${holdOk ? "on" : ""}`}>
+              <div className="flex items-center justify-between">
+                <span className="label" style={{ color: "#FFD400" }}>Card guarantee</span>
+                <span className="chip">SIMULATED · NO CARD DATA</span>
+              </div>
+              <div className="mt-2 text-[15px] font-bold">
+                Hold <span className="mono g">{usd(owed)}</span> on my card
+              </div>
+              <p className="muted mt-1 text-[11.5px] leading-snug">
+                Advance {usd(quote.advanceUsd)} + lenders&rsquo; fee {usd(quote.feeUsd)}. A pre-authorization, not a charge: released when you
+                repay, captured only if you don&rsquo;t. No funds on the card, no advance.
+              </p>
+              <span className="mt-2.5 flex items-center gap-2 text-[13px] font-semibold">
+                <input type="checkbox" checked={holdOk} onChange={(e) => setHoldOk(e.target.checked)} />
+                I authorize the hold
+              </span>
+            </label>
+          )}
+
+          <button className="btn btn-primary" disabled={!quote.eligible || !holdOk || !!busy || !chain?.deployed} onClick={advance}>
             {busy === "advance" ? "Minting claim & paying…" : `Get ${usd(quote.advanceUsd)} in ${quote.payout ?? "USDT"} now`}
           </button>
           {!chain?.deployed && <p className="muted text-center text-xs">Contracts not deployed yet — advance is disabled.</p>}
@@ -524,6 +548,7 @@ export default function Home() {
           <div className="card">
             <Step state="done" title="Receipt verified by AI agent" />
             <Step state="done" title="Claim tokenized & paid" desc={txs[0] ? <TxLink t={txs[0]} /> : undefined} />
+            <Step state="done" title={`Card hold placed · ${usd(owed)}`} desc="Simulated pre-authorization: lenders covered" />
             <Step
               state={attested ? "done" : "next"}
               title={attested ? "Refund collected at the airport" : "Collect refund at the airport"}
@@ -534,6 +559,7 @@ export default function Home() {
               title={settled ? `Repaid ${usd(owed)} · settled` : `Repay ${usd(owed)} · claim settled`}
               desc={settled && txRepay ? <TxLink t={txRepay} /> : undefined}
             />
+            <Step state={settled ? "done" : "todo"} title={settled ? "Card hold released" : "Card hold released on repayment"} desc="Simulated" />
           </div>
 
           {!settled && (
