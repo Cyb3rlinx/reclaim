@@ -1,17 +1,17 @@
 # Reclaim — your VAT refund, today
 
-> Built at **BNB Bangkok 2026** (Developer Track).
+> Built at **BNB Bangkok 2026** (Developer Track · CoinMarketCap × Atlas Challenge).
 
 Tourists in Thailand pay 7% VAT and can claim it back, but only **at the airport, on the day they leave**: up to 60 days later, after a queue, holding a paper form they cannot lose. Until then their own money is locked.
 
-**Reclaim** is an AI agent on BNB Chain that reads a shopping receipt, checks it against the Thai VAT-refund rules, mints the refund right as an on-chain claim (an RWA), and **advances 80% of the refund in stablecoins instantly**. When the tourist collects the real refund at the airport, they repay the advance plus a 5% fee, and the liquidity pool earns that fee.
+**Reclaim** is an AI agent on BNB Chain that reads a shopping receipt, checks it against the Thai VAT-refund rules, mints the refund right as an on-chain claim (an RWA), and **advances 80% of the refund in stablecoins instantly**. When the tourist collects the real refund at the airport, they repay the advance plus a fee of 5% of the refund, and the liquidity pool earns that fee.
 
 ```
-receipt photo ──► AI agent reads it ──► 6 rule checks ──► Reclaim Receipt NFT minted
+receipt photo ──► AI agent reads it ──► rule + price checks ──► Reclaim Receipt NFT minted
                                                               │
 tourist gets 80% now ◄── ReclaimVault (ERC-4626 pool) ◄───────┘
         │
-   airport refund ──► oracle attests ──► tourist repays advance + 5% ──► LPs earn the fee
+   airport refund ──► oracle attests ──► tourist repays advance + fee ──► LPs earn the fee
 ```
 
 ## What is on-chain (BNB Smart Chain)
@@ -35,7 +35,7 @@ tourist gets 80% now ◄── ReclaimVault (ERC-4626 pool) ◄─────�
 
 **Demo video (1:37, real AI read + live BSC testnet transactions):** [launch/reclaim-demo.mp4](launch/reclaim-demo.mp4)
 
-**Sponsor integration:** every advance is priced with the Atlas Oracle THB/USD feed on BSC — see [ATLAS-INTEGRATION.md](ATLAS-INTEGRATION.md).
+**Sponsor integration:** every advance is priced with the Atlas Oracle THB/USD feed on BSC (enforced on-chain) and cross-checked live with the **CoinMarketCap Pro API** (`/v2/tools/price-conversion` for THB→USD and the tourist's currency, `/v1/cryptocurrency/quotes/latest` for the USDT/USDC/FDUSD peg check) — see [ATLAS-INTEGRATION.md](ATLAS-INTEGRATION.md) ([PDF](ATLAS-INTEGRATION.pdf)). The CMC key is a server-side Cloudflare secret (`CMC_API_KEY`); without it the app falls back to public sources and labels them in the UI.
 
 ## Live on BNB Smart Chain testnet (chainId 97)
 
